@@ -3,7 +3,7 @@ import {
   basename,
   ensureMdExt,
   findByPath,
-  isDirty,
+  hasUnsavedChanges,
   markSaved,
   nextUntitledName,
   registerTab,
@@ -11,7 +11,8 @@ import {
   type Tab,
 } from './state'
 import { attachTabDom, currentContent, destroyTabEditors } from './editors'
-import { alert, ask, invoke, openDialog, saveDialog } from './lib/tauri'
+import { appAlert, showAppDialog } from './ui/dialog'
+import { invoke, openDialog, saveDialog } from './lib/tauri'
 
 const MD_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd', 'txt'] }]
 
@@ -90,7 +91,7 @@ export async function openPath(path: string): Promise<void> {
     })
     attachAndRegister(tab)
   } catch (e) {
-    await alert(String(e), '打开失败')
+    await appAlert(String(e), '打开失败')
   }
 }
 
@@ -134,17 +135,31 @@ export async function saveTab(tab: Tab, saveAs = false): Promise<boolean> {
     markSaved(tab, path)
     return true
   } catch (e) {
-    await alert(String(e), '保存失败')
+    await appAlert(String(e), '保存失败')
     return false
   }
 }
 
-/** 关闭标签页（带脏确认）。返回是否真的关闭了。 */
+/** 关闭标签页（有实质修改时弹应用内对话框确认）。返回是否真的关闭了。 */
 export async function closeTabInteractive(tab: Tab): Promise<boolean> {
   tab.content = currentContent(tab)
-  if (isDirty(tab)) {
-    const ok = await ask(`“${tab.name}”有未保存的修改，关闭后将丢失。确定关闭吗？`, '未保存的修改')
-    if (!ok) return false
+  if (hasUnsavedChanges(tab)) {
+    const action = await showAppDialog({
+      title: '未保存的修改',
+      message: `“${tab.name}”尚未保存，关闭后将丢失修改。`,
+      buttons: [
+        { label: '不保存', value: 'discard', kind: 'danger' },
+        { label: '取消', value: 'cancel' },
+        { label: '保存', value: 'save', kind: 'primary' },
+      ],
+      cancelValue: 'cancel',
+    })
+    if (action === 'cancel') return false
+    if (action === 'save') {
+      const saved = await saveTab(tab)
+      // 保存被取消（如另存为对话框直接关闭）时留在当前标签
+      if (!saved) return false
+    }
   }
   destroyTabEditors(tab)
   tab.root.remove()

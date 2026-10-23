@@ -27,21 +27,6 @@ export async function saveDialog(options: SaveDialogOptions): Promise<string | n
   return m.save(options)
 }
 
-export async function ask(message: string, title: string): Promise<boolean> {
-  if (!isTauri) return window.confirm(message)
-  const m = await import('@tauri-apps/plugin-dialog')
-  return m.ask(message, { title, kind: 'warning' })
-}
-
-export async function alert(message: string, title: string): Promise<void> {
-  if (!isTauri) {
-    window.alert(message)
-    return
-  }
-  const m = await import('@tauri-apps/plugin-dialog')
-  await m.message(message, { title, kind: 'error' })
-}
-
 /** 本地文件路径 → webview 可访问的 asset 协议 URL */
 export async function assetUrl(path: string): Promise<string> {
   const { convertFileSrc } = await import('@tauri-apps/api/core')

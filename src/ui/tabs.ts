@@ -1,4 +1,4 @@
-import { setActive, subscribe, isDirty, tabs, activeId, type Tab } from '../state'
+import { setActive, subscribe, hasUnsavedChanges, tabs, activeId, type Tab } from '../state'
 import { closeTabInteractive, closeOtherTabs } from '../files'
 import { showTabContextMenu } from './menu'
 
@@ -58,7 +58,7 @@ function renderTab(tab: Tab): HTMLElement {
   title.textContent = tab.name
   el.appendChild(title)
 
-  if (isDirty(tab)) {
+  if (hasUnsavedChanges(tab)) {
     const dot = document.createElement('span')
     dot.className = 'tab-dirty'
     dot.textContent = '●'

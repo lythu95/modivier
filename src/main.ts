@@ -4,7 +4,8 @@ import 'vditor/dist/index.css'
 import { apply as applyTheme } from './theme'
 import {
   activeTab,
-  hasDirtyTabs,
+  anyUnsavedChanges,
+  hasUnsavedChanges,
   notify,
   setActive,
   subscribe,
@@ -21,8 +22,8 @@ import {
 } from './files'
 import { setupTabsBar } from './ui/tabs'
 import { setupTitlebar } from './ui/titlebar'
+import { isDialogOpen, showAppDialog } from './ui/dialog'
 import {
-  ask,
   invoke,
   isTauri,
   nativeWindow,
@@ -91,7 +92,9 @@ async function main(): Promise<void> {
     updateLayout(editors)
     welcome.style.display = tabs.length === 0 ? '' : 'none'
     const tab = activeTab()
-    document.title = tab ? `${tab.name}${tab.content !== tab.savedContent ? ' *' : ''} - ${APP_TITLE}` : APP_TITLE
+    document.title = tab
+      ? `${tab.name}${hasUnsavedChanges(tab) ? ' *' : ''} - ${APP_TITLE}`
+      : APP_TITLE
     if (isTauri) {
       void nativeWindow().then((w) => w?.setTitle(document.title))
     }
@@ -121,15 +124,25 @@ async function main(): Promise<void> {
     }
   }
 
-  // 窗口关闭前确认未保存修改
+  // 窗口关闭前确认未保存修改（应用内对话框）
   const win = await nativeWindow()
   await win?.onCloseRequested(async () => {
-    if (!hasDirtyTabs()) {
+    // 已有对话框打开时忽略本次关闭请求，避免对话框叠加
+    if (isDialogOpen()) return
+    if (!anyUnsavedChanges()) {
       await win.destroy()
       return
     }
-    const ok = await ask('有标签页尚未保存，退出将丢失这些修改。确定退出吗？', '未保存的修改')
-    if (ok) await win.destroy()
+    const action = await showAppDialog({
+      title: '未保存的修改',
+      message: '有标签页尚未保存，退出后将丢失这些修改。确定退出吗？',
+      buttons: [
+        { label: '退出并丢弃', value: 'quit', kind: 'danger' },
+        { label: '取消', value: 'cancel' },
+      ],
+      cancelValue: 'cancel',
+    })
+    if (action === 'quit') await win.destroy()
   })
 
   notify()
@@ -139,6 +152,8 @@ function setupShortcuts(): void {
   window.addEventListener(
     'keydown',
     (e) => {
+      // 对话框打开期间屏蔽应用快捷键（对话框自己处理 Esc/Tab/Enter）
+      if (isDialogOpen()) return
       if (!e.ctrlKey && !e.metaKey) return
       const key = e.key.toLowerCase()
 

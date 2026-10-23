@@ -77,12 +77,19 @@ export function unregisterTab(id: string): void {
   notify()
 }
 
-export function isDirty(tab: Tab): boolean {
-  return tab.content !== tab.savedContent
+/**
+ * 是否有未保存的修改：
+ * - 文件标签：内容与最近一次保存不一致即视为有修改；
+ * - 未命名标签：只有写了实质内容才算（编辑器自动插入的空白不算，
+ *   因此“新建后什么都没写就关闭”不会弹确认，直接关闭）。
+ */
+export function hasUnsavedChanges(tab: Tab): boolean {
+  if (tab.path) return tab.content !== tab.savedContent
+  return tab.content.trim() !== ''
 }
 
-export function hasDirtyTabs(): boolean {
-  return tabs.some(isDirty)
+export function anyUnsavedChanges(): boolean {
+  return tabs.some(hasUnsavedChanges)
 }
 
 export function markSaved(tab: Tab, path: string | null): void {
