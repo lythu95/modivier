@@ -1,7 +1,7 @@
 [package]
 name = "modivier"
 version = "0.1.0"
-description = "MoDiViEr —— Mark Down Viewer and Editor"
+description = "MoDiViEr —— MarkDown Viewer and Editor"
 authors = ["李扬"]
 edition = "2021"
 

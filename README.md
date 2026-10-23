@@ -1,6 +1,6 @@
 # MoDiViEr
 
-**MoDiViEr —— Mark Down Viewer and Editor**
+**MoDiViEr —— MarkDown Viewer and Editor**
 
 一个参考 [Typora](https://typora.io/) 交互习惯的**轻量 Markdown 阅读与编辑器**，基于 Tauri 2 构建，主打"够轻、够快、够简单"：冷启动几百毫秒、安装包 ~5MB、内存占用 ~80MB，只保留查看与最基础的编辑能力。
 

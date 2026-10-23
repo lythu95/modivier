@@ -376,12 +376,13 @@ button {
 
 .welcome-tagline {
   margin-top: 7px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.34em;
+  /* 小型大写字母：源文本中的大写（M/D/V/E）保持全高，其余为小一号大写 */
+  font-variant: small-caps;
+  letter-spacing: 0.18em;
   /* 抵消末字符字距，保持视觉居中 */
-  padding-left: 0.34em;
-  text-transform: uppercase;
+  padding-left: 0.18em;
   color: var(--fg-muted);
 }
 
