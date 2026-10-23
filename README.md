@@ -1,4 +1,6 @@
-# MD Editor
+# MoDiViEr
+
+**MoDiViEr —— Mark Down Viewer and Editor**
 
 一个参考 [Typora](https://typora.io/) 交互习惯的**轻量 Markdown 阅读与编辑器**，基于 Tauri 2 构建，主打"够轻、够快、够简单"：冷启动几百毫秒、安装包 ~5MB、内存占用 ~80MB，只保留查看与最基础的编辑能力。
 
@@ -44,7 +46,7 @@
 ```bash
 npm install        # 安装依赖（postinstall 会把 vditor 静态资源复制到 public/vditor）
 npm run tauri dev  # 开发调试
-npm run tauri build # 打包 NSIS 安装包到 src-tauri/target/release/bundle/
+npm run tauri build # 打包 NSIS 安装包到 src-tauri/target/release/bundle/（MoDiViEr_x.y.z_x64-setup.exe）
 ```
 
 `npm run dev` 可以脱离 Tauri 在纯浏览器里调试 UI（文件相关功能自动降级禁用）。

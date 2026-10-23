@@ -1,8 +1,10 @@
 import { getTheme, toggleTheme } from '../theme'
 import { activeTab, type Tab } from '../state'
+import { APP_NAME, APP_TAGLINE, APP_VERSION } from '../app-info'
 import { closeTabInteractive, closeOtherTabs, newUntitledTab, openViaDialog, saveTab } from '../files'
 import { toggleMode } from '../editors'
 import { revealInDir } from '../lib/tauri'
+import { showAppDialog } from './dialog'
 
 export interface MenuItem {
   label?: string
@@ -96,9 +98,20 @@ export function showAppMenu(anchor: HTMLElement): void {
       { label: dark ? '浅色主题' : '深色主题', action: toggleTheme },
       { separator: true },
       { label: '关闭标签页', kbd: 'Ctrl+W', action: onCloseActive },
+      { separator: true },
+      { label: `关于 ${APP_NAME}`, action: showAbout },
     ],
     'bottom-left',
   )
+}
+
+function showAbout(): void {
+  void showAppDialog({
+    title: '关于',
+    message: `${APP_NAME} —— ${APP_TAGLINE}\n\n版本 ${APP_VERSION}\nTauri 2 · Vditor · CodeMirror 6`,
+    buttons: [{ label: '确定', value: 'ok', kind: 'primary' }],
+    cancelValue: 'ok',
+  })
 }
 
 function onSave(as: boolean): void {

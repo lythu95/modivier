@@ -314,40 +314,85 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  user-select: none;
 }
 
+#welcome > * {
+  animation: welcome-rise 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+#welcome > *:nth-child(2) { animation-delay: 0.05s; }
+#welcome > *:nth-child(3) { animation-delay: 0.1s; }
+#welcome > *:nth-child(4) { animation-delay: 0.16s; }
+#welcome > *:nth-child(5) { animation-delay: 0.22s; }
+#welcome > *:nth-child(6) { animation-delay: 0.28s; }
+
+@keyframes welcome-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* 与应用图标同构的 logo：深色圆角块 + 白色 M + 绿色强调条 */
 .welcome-logo {
-  width: 72px;
-  height: 72px;
+  position: relative;
+  width: 84px;
+  height: 84px;
   display: grid;
   place-items: center;
-  font-size: 26px;
+  background: #2d3437;
+  border-radius: 22px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+  margin-bottom: 24px;
+}
+
+.welcome-logo span {
+  font-size: 34px;
   font-weight: 700;
   color: #fff;
-  background: #2d3437;
-  border-radius: 18px;
-  margin-bottom: 8px;
+  transform: translateY(-7px);
 }
 
-.welcome-title {
-  font-size: 20px;
+.welcome-logo i {
+  position: absolute;
+  bottom: 17px;
+  width: 42px;
+  height: 7px;
+  border-radius: 4px;
+  background: #3e8e56;
+}
+
+/* 深色下页面背景较深，logo 底色调亮一档保持轮廓清晰 */
+:root[data-theme='dark'] .welcome-logo {
+  background: #363d43;
+}
+
+.welcome-name {
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: 0.015em;
+}
+
+.welcome-tagline {
+  margin-top: 7px;
+  font-size: 11px;
   font-weight: 600;
-}
-
-.welcome-sub {
+  letter-spacing: 0.34em;
+  /* 抵消末字符字距，保持视觉居中 */
+  padding-left: 0.34em;
+  text-transform: uppercase;
   color: var(--fg-muted);
-  font-size: 13px;
 }
 
 .welcome-actions {
   display: flex;
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 34px;
 }
 
 .btn {
-  padding: 7px 16px;
+  padding: 8px 18px;
   border-radius: 8px;
   border: 1px solid var(--border);
   font-size: 13px;
@@ -371,10 +416,44 @@ button {
 
 .welcome-hints {
   display: flex;
-  gap: 18px;
-  margin-top: 22px;
-  color: var(--fg-muted);
+  align-items: center;
+  gap: 14px;
+  margin-top: 28px;
   font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.hint-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  opacity: 0.55;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 19px;
+  padding: 2px 5px;
+  margin: 0 2px;
+  text-align: center;
+  font-family: var(--sans-font);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--fg);
+  background: var(--menu-bg);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+}
+
+.welcome-version {
+  margin-top: 36px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  opacity: 0.8;
 }
 
 /* ========== 菜单 ========== */
@@ -456,6 +535,8 @@ button {
   font-size: 13px;
   line-height: 1.65;
   color: var(--fg-muted);
+  /* 支持多行文案（\n） */
+  white-space: pre-line;
 }
 
 .dialog-actions {

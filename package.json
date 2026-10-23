@@ -1,8 +1,8 @@
 {
-  "name": "md-editor",
+  "name": "modivier",
   "private": true,
   "version": "0.1.0",
-  "description": "轻量 Markdown 阅读与编辑器（参考 Typora）",
+  "description": "MoDiViEr —— Mark Down Viewer and Editor（参考 Typora 的轻量 Markdown 阅读编辑器）",
   "type": "module",
   "scripts": {
     "dev": "vite",

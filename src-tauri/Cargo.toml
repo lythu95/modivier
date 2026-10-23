@@ -1,13 +1,13 @@
 [package]
-name = "md-editor"
+name = "modivier"
 version = "0.1.0"
-description = "轻量 Markdown 阅读与编辑器"
+description = "MoDiViEr —— Mark Down Viewer and Editor"
 authors = ["李扬"]
 edition = "2021"
 
 # 库 crate 名与 main.rs 中的引用保持一致
 [lib]
-name = "md_editor_lib"
+name = "modivier_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

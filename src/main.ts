@@ -1,6 +1,7 @@
 import './app.css'
 import 'vditor/dist/index.css'
 
+import { APP_NAME, APP_TAGLINE, APP_VERSION } from './app-info'
 import { apply as applyTheme } from './theme'
 import {
   activeTab,
@@ -32,7 +33,7 @@ import {
   openExternal,
 } from './lib/tauri'
 
-const APP_TITLE = 'MD Editor'
+const APP_TITLE = APP_NAME
 
 const TEMPLATE = `
   <header id="titlebar">
@@ -57,17 +58,19 @@ const TEMPLATE = `
   <main id="content">
     <div id="editors"></div>
     <div id="welcome">
-      <div class="welcome-logo">M↓</div>
-      <div class="welcome-title">MD Editor</div>
-      <div class="welcome-sub">轻量 Markdown 阅读与编辑</div>
+      <div class="welcome-logo"><span>M</span><i></i></div>
+      <h1 class="welcome-name">${APP_NAME}</h1>
+      <p class="welcome-tagline">${APP_TAGLINE}</p>
       <div class="welcome-actions">
         <button id="welcome-open" class="btn primary">打开文件</button>
         <button id="welcome-new" class="btn">新建标签页</button>
       </div>
       <div class="welcome-hints">
-        <span>拖入 .md 文件即可打开</span>
-        <span>Ctrl+/ 切换源码模式</span>
+        <span>拖入 .md 文件打开</span>
+        <i class="hint-dot"></i>
+        <span><kbd>Ctrl</kbd> + <kbd>/</kbd> 切换源码模式</span>
       </div>
+      <p class="welcome-version">v${APP_VERSION}</p>
     </div>
   </main>
 `

@@ -1,6 +1,6 @@
 export type Theme = 'light' | 'dark'
 
-const KEY = 'md-editor:theme'
+const KEY = 'modivier:theme'
 const listeners = new Set<() => void>()
 
 function initial(): Theme {
