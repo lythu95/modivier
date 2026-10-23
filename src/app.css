@@ -1,0 +1,449 @@
+/* ========== 设计变量（参考 Typora 的干净排版） ========== */
+:root {
+  --sans-font: "Segoe UI", "Microsoft YaHei", "PingFang SC", -apple-system, sans-serif;
+  --mono-font: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  --content-width: 860px;
+}
+
+:root[data-theme='light'] {
+  --bg: #ffffff;
+  --titlebar-bg: #f7f8f9;
+  --fg: #24292f;
+  --fg-muted: #57606a;
+  --border: #d8dee4;
+  --tab-active-bg: #ffffff;
+  --tab-hover-bg: #e9edf1;
+  --menu-bg: #ffffff;
+  --menu-hover: #eef1f4;
+  --accent: #0969da;
+  --danger: #cf222e;
+  --code-bg: #f6f8fa;
+  --scrollbar-thumb: #c4ccd3;
+}
+
+:root[data-theme='dark'] {
+  --bg: #202124;
+  --titlebar-bg: #17181b;
+  --fg: #d6dade;
+  --fg-muted: #9aa2ab;
+  --border: #34383f;
+  --tab-active-bg: #202124;
+  --tab-hover-bg: #2b2e34;
+  --menu-bg: #24262a;
+  --menu-hover: #33363c;
+  --accent: #4493f8;
+  --danger: #f85149;
+  --code-bg: #2a2d33;
+  --scrollbar-thumb: #4a4f57;
+}
+
+/* ========== 基础 ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--sans-font);
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========== 标题栏 ========== */
+#titlebar {
+  display: flex;
+  align-items: stretch;
+  height: 40px;
+  flex: none;
+  background: var(--titlebar-bg);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+
+#menu-btn {
+  width: 42px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--fg-muted);
+}
+
+#menu-btn:hover,
+#menu-btn:active {
+  background: var(--tab-hover-bg);
+  color: var(--fg);
+}
+
+#tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+#tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  min-width: 60px;
+  height: 32px;
+  margin-top: 8px;
+  padding: 0 8px 0 12px;
+  border-radius: 8px 8px 0 0;
+  color: var(--fg-muted);
+  cursor: default;
+  flex: none;
+}
+
+.tab:hover {
+  background: var(--tab-hover-bg);
+}
+
+.tab.active {
+  background: var(--tab-active-bg);
+  color: var(--fg);
+  box-shadow: inset 0 1px 0 var(--border), inset 1px 0 0 var(--border), inset -1px 0 0 var(--border);
+}
+
+.tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+
+.tab-dirty {
+  color: var(--accent);
+  font-size: 9px;
+  flex: none;
+}
+
+.tab-close {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--fg-muted);
+  opacity: 0;
+  flex: none;
+}
+
+.tab:hover .tab-close,
+.tab.active .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+  color: var(--fg);
+}
+
+#new-tab-btn {
+  width: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  align-self: center;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--fg-muted);
+  margin-left: 2px;
+}
+
+#new-tab-btn:hover {
+  background: var(--tab-hover-bg);
+  color: var(--fg);
+}
+
+#drag-region {
+  flex: 1;
+  min-width: 40px;
+}
+
+#win-controls {
+  display: flex;
+  flex: none;
+}
+
+#win-controls button {
+  width: 46px;
+  display: grid;
+  place-items: center;
+  color: var(--fg-muted);
+}
+
+#win-controls button:hover {
+  background: var(--tab-hover-bg);
+  color: var(--fg);
+}
+
+#win-close:hover {
+  background: #e81123;
+  color: #fff;
+}
+
+/* ========== 内容区 ========== */
+#content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+#editors {
+  position: absolute;
+  inset: 0;
+}
+
+#editors[data-empty='1'] {
+  visibility: hidden;
+}
+
+.tab-editor {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+.tab-editor.active {
+  display: block;
+}
+
+/* ========== Vditor（所见即所得） ========== */
+.vd-host,
+.vd-host .vditor {
+  height: 100%;
+}
+
+.vd-host .vditor {
+  background: var(--bg) !important;
+  border: none !important;
+}
+
+.vd-host .vditor-toolbar {
+  display: none !important;
+}
+
+/* Typora 式居中排版 */
+.vd-host .vditor-reset {
+  max-width: var(--content-width);
+  margin: 0 auto !important;
+  padding: 26px 36px 30vh !important;
+  font-family: var(--sans-font) !important;
+  line-height: 1.65 !important;
+  color: var(--fg) !important;
+}
+
+.vd-host .vditor-reset code,
+.vd-host .vditor-reset pre {
+  font-family: var(--mono-font) !important;
+}
+
+.vd-host .vditor-reset img {
+  max-width: 100%;
+}
+
+/* ========== CodeMirror（源码模式） ========== */
+.cm-host {
+  height: 100%;
+  overflow: hidden;
+}
+
+.cm-host .cm-editor {
+  height: 100%;
+  background: transparent;
+}
+
+.cm-host .cm-editor.cm-focused {
+  outline: none;
+}
+
+.cm-host .cm-scroller {
+  font-family: var(--mono-font);
+  line-height: 1.65;
+}
+
+.cm-host .cm-content {
+  padding: 18px 28px 30vh !important;
+  max-width: calc(var(--content-width) + 200px);
+  margin: 0 auto;
+}
+
+.cm-host .cm-gutters {
+  background: transparent !important;
+  border: none !important;
+  color: var(--fg-muted);
+}
+
+/* ========== 欢迎页 ========== */
+#welcome {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.welcome-logo {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  background: #2d3437;
+  border-radius: 18px;
+  margin-bottom: 8px;
+}
+
+.welcome-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.welcome-sub {
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+
+.welcome-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.btn {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--menu-bg);
+}
+
+.btn:hover {
+  background: var(--menu-hover);
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn.primary:hover {
+  filter: brightness(1.1);
+}
+
+.welcome-hints {
+  display: flex;
+  gap: 18px;
+  margin-top: 22px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+/* ========== 菜单 ========== */
+.menu-pop {
+  position: fixed;
+  z-index: 1000;
+  min-width: 220px;
+  padding: 5px;
+  background: var(--menu-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.menu-item:hover:not(:disabled) {
+  background: var(--menu-hover);
+}
+
+.menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.menu-item.danger {
+  color: var(--danger);
+}
+
+.menu-kbd {
+  color: var(--fg-muted);
+  font-size: 11.5px;
+  font-family: var(--sans-font);
+}
+
+.menu-sep {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--border);
+}
+
+/* ========== 滚动条 ========== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  filter: brightness(0.85);
+}
+
+::-webkit-scrollbar-corner,
+::-webkit-scrollbar-track {
+  background: transparent;
+}
