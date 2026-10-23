@@ -1,0 +1,17 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# 由 node_modules/vditor/dist 复制生成（postinstall 自动重建）
+public/vditor/
+
+# 本地文件
+*.local
+
+# 系统文件
+.DS_Store
+Thumbs.db
