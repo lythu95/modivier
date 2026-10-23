@@ -1,0 +1,30 @@
+[package]
+name = "md-editor"
+version = "0.1.0"
+description = "轻量 Markdown 阅读与编辑器"
+authors = ["李扬"]
+edition = "2021"
+
+# 库 crate 名与 main.rs 中的引用保持一致
+[lib]
+name = "md_editor_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+encoding_rs = "0.8"
+
+[profile.release]
+# 体积与速度的折中，链接时间明显缩短
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
