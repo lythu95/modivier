@@ -3,6 +3,7 @@ import 'vditor/dist/index.css'
 
 import { APP_NAME, APP_TAGLINE, APP_VERSION } from './app-info'
 import { apply as applyTheme } from './theme'
+import { initLocale, onLocaleChange, t } from './i18n'
 import {
   activeTab,
   anyUnsavedChanges,
@@ -23,6 +24,7 @@ import {
 } from './files'
 import { setupTabsBar } from './ui/tabs'
 import { setupTitlebar } from './ui/titlebar'
+import { setupStatusbar } from './ui/statusbar'
 import { isDialogOpen, showAppDialog } from './ui/dialog'
 import {
   invoke,
@@ -37,45 +39,53 @@ const APP_TITLE = APP_NAME
 
 const TEMPLATE = `
   <header id="titlebar">
-    <button id="menu-btn" title="菜单" aria-label="菜单">
+    <button id="menu-btn" title="" aria-label="menu">
       <svg viewBox="0 0 16 16" width="15" height="15"><path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
     </button>
     <div id="tabs"></div>
-    <button id="new-tab-btn" title="新建标签页 (Ctrl+T)">
+    <button id="new-tab-btn" title="">
       <svg viewBox="0 0 16 16" width="13" height="13"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
     <div id="drag-region" data-tauri-drag-region></div>
     <div id="win-controls">
-      <button id="win-min" title="最小化">
+      <button id="win-min">
         <svg viewBox="0 0 10 10" width="10" height="10"><path d="M0 5h10" stroke="currentColor"/></svg>
       </button>
-      <button id="win-max" title="最大化"></button>
-      <button id="win-close" title="关闭">
+      <button id="win-max"></button>
+      <button id="win-close">
         <svg viewBox="0 0 10 10" width="10" height="10"><path d="M0 0l10 10M10 0l-10 10" stroke="currentColor"/></svg>
       </button>
     </div>
   </header>
   <main id="content">
     <div id="editors"></div>
-    <div id="welcome">
-      <div class="welcome-logo"><span>M</span><i></i></div>
-      <h1 class="welcome-name">${APP_NAME}</h1>
-      <p class="welcome-tagline">${APP_TAGLINE}</p>
-      <div class="welcome-actions">
-        <button id="welcome-open" class="btn primary">打开文件</button>
-        <button id="welcome-new" class="btn">新建标签页</button>
-      </div>
-      <div class="welcome-hints">
-        <span>拖入 .md 文件打开</span>
-        <i class="hint-dot"></i>
-        <span><kbd>Ctrl</kbd> + <kbd>/</kbd> 切换源码模式</span>
-      </div>
-      <p class="welcome-version">v${APP_VERSION}</p>
-    </div>
+    <div id="welcome"></div>
   </main>
+  <footer id="statusbar"></footer>
 `
 
+/** 欢迎页内容（语言切换时整体重建） */
+function renderWelcome(welcome: HTMLElement): void {
+  welcome.innerHTML = `
+    <div class="welcome-logo"><span>M</span><i></i></div>
+    <h1 class="welcome-name">${APP_NAME}</h1>
+    <p class="welcome-tagline">${APP_TAGLINE}</p>
+    <div class="welcome-actions">
+      <button id="welcome-open" class="btn primary">${t('common.open')}</button>
+      <button id="welcome-new" class="btn">${t('common.newFile')}</button>
+    </div>
+    <ul class="welcome-hints">
+      <li>${t('welcome.dropHint')}</li>
+      <li><kbd>Ctrl</kbd> + <kbd>/</kbd> ${t('welcome.modeHint')}</li>
+      <li><kbd>Ctrl</kbd> + <kbd>N</kbd> ${t('welcome.newHint')}</li>
+    </ul>
+    <p class="welcome-version">v${APP_VERSION}`
+  welcome.querySelector('#welcome-open')?.addEventListener('click', () => void openViaDialog())
+  welcome.querySelector('#welcome-new')?.addEventListener('click', () => newUntitledTab())
+}
+
 async function main(): Promise<void> {
+  initLocale()
   applyTheme()
 
   const app = document.getElementById('app')!
@@ -85,10 +95,19 @@ async function main(): Promise<void> {
   const tabsBar = document.getElementById('tabs')!
   const editors = document.getElementById('editors')!
   const welcome = document.getElementById('welcome')!
+  const statusbar = document.getElementById('statusbar')!
+  const newTabBtn = document.getElementById('new-tab-btn')!
 
   await setupTitlebar(titlebar)
   setupTabsBar(tabsBar)
+  setupStatusbar(statusbar)
   initFileActions(editors)
+
+  renderWelcome(welcome)
+  const applyChromeTexts = () => {
+    newTabBtn.title = t('tt.newFile')
+  }
+  applyChromeTexts()
 
   // 状态变化 → 布局、欢迎页、标题
   subscribe(() => {
@@ -103,9 +122,7 @@ async function main(): Promise<void> {
     }
   })
 
-  document.getElementById('new-tab-btn')!.addEventListener('click', () => newUntitledTab())
-  document.getElementById('welcome-open')!.addEventListener('click', () => void openViaDialog())
-  document.getElementById('welcome-new')!.addEventListener('click', () => newUntitledTab())
+  newTabBtn.addEventListener('click', () => newUntitledTab())
 
   setupShortcuts()
   setupLinkHandling(app)
@@ -123,7 +140,7 @@ async function main(): Promise<void> {
       const args = await invoke<string[]>('get_launch_args')
       await openPaths(args)
     } catch {
-      /* 忽略启动参数读取失败 */
+      // 忽略启动参数读取失败
     }
   }
 
@@ -137,15 +154,22 @@ async function main(): Promise<void> {
       return
     }
     const action = await showAppDialog({
-      title: '未保存的修改',
-      message: '有标签页尚未保存，退出后将丢失这些修改。确定退出吗？',
+      title: t('dlg.unsavedTitle'),
+      message: t('dlg.unsavedExit'),
       buttons: [
-        { label: '退出并丢弃', value: 'quit', kind: 'danger' },
-        { label: '取消', value: 'cancel' },
+        { label: t('dlg.discardExit'), value: 'quit', kind: 'danger' },
+        { label: t('dlg.cancel'), value: 'cancel' },
       ],
       cancelValue: 'cancel',
     })
     if (action === 'quit') await win.destroy()
+  })
+
+  onLocaleChange(() => {
+    renderWelcome(welcome)
+    applyChromeTexts()
+    // 触发标签条/状态栏等重渲染
+    notify()
   })
 
   notify()
@@ -163,7 +187,8 @@ function setupShortcuts(): void {
       if (key === 'o') {
         e.preventDefault()
         void openViaDialog()
-      } else if (key === 't') {
+      } else if (key === 'n' || key === 't') {
+        // Ctrl+N 新建文件；保留 Ctrl+T 作为习惯性别名
         e.preventDefault()
         newUntitledTab()
       } else if (key === 's') {

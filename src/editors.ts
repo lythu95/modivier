@@ -17,10 +17,23 @@ import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { oneDark } from '@codemirror/theme-one-dark'
 
 import { getTheme, onThemeChange } from './theme'
+import { onLocaleChange, vditorLang } from './i18n'
 import { activeId, activeTab, notify, tabs, type Tab } from './state'
 import { installImageResolver } from './images'
 
 const VDITOR_CONTENT_THEME_PATH = '/vditor/dist/css/content-theme'
+
+// CodeMirror 光标/选区变化回调（状态栏订阅）
+const cursorListeners = new Set<() => void>()
+
+export function onCursorActivity(fn: () => void): () => void {
+  cursorListeners.add(fn)
+  return () => cursorListeners.delete(fn)
+}
+
+function emitCursor(): void {
+  for (const fn of cursorListeners) fn()
+}
 
 export function currentContent(tab: Tab): string {
   if (tab.mode === 'source' && tab.cm) return tab.cm.state.doc.toString()
@@ -37,7 +50,7 @@ function vditorOptions(value: string, onInput: (v: string) => void, onReady: () 
   const dark = getTheme() === 'dark'
   return {
     mode: 'ir',
-    lang: 'zh_CN',
+    lang: vditorLang() as IOptions['lang'],
     // 指向本地 public/vditor（postinstall 从 node_modules 复制），保证懒加载资源离线可用
     cdn: 'vditor',
     value,
@@ -95,17 +108,19 @@ function buildCmExtensions(dark: boolean) {
   ]
 }
 
+function cmUpdateListener(onInput: (v: string) => void) {
+  return EditorView.updateListener.of((u) => {
+    if (u.docChanged) onInput(u.state.doc.toString())
+    if (u.docChanged || u.selectionSet) emitCursor()
+  })
+}
+
 function makeCodeMirror(host: HTMLElement, value: string, onInput: (v: string) => void): EditorView {
   return new EditorView({
     parent: host,
     state: EditorState.create({
       doc: value,
-      extensions: [
-        ...buildCmExtensions(getTheme() === 'dark'),
-        EditorView.updateListener.of((u) => {
-          if (u.docChanged) onInput(u.state.doc.toString())
-        }),
-      ],
+      extensions: [...buildCmExtensions(getTheme() === 'dark'), cmUpdateListener(onInput)],
     }),
   })
 }
@@ -158,8 +173,9 @@ export function activateEditor(tab: Tab): void {
           doc: tab.content,
           extensions: [
             ...buildCmExtensions(getTheme() === 'dark'),
-            EditorView.updateListener.of((u) => {
-              if (u.docChanged) tab.content = u.state.doc.toString()
+            cmUpdateListener((v) => {
+              tab.content = v
+              notify()
             }),
           ],
         }),
@@ -169,6 +185,7 @@ export function activateEditor(tab: Tab): void {
   tab.vdHost.style.display = wantSource ? 'none' : ''
   tab.cmHost.style.display = wantSource ? '' : 'none'
   focusActiveEditor()
+  emitCursor()
 }
 
 export function focusActiveEditor(): void {
@@ -231,3 +248,20 @@ export function destroyTabEditors(tab: Tab): void {
 
 // 主题变化时刷新已存在的编辑器
 onThemeChange(applyThemeToEditors)
+
+// 语言切换时重建 Vditor 实例（其界面语言在构造时确定）；内容先取出再重建
+onLocaleChange(() => {
+  for (const tab of tabs) {
+    if (tab.vditor) {
+      tab.content = currentContent(tab)
+      try {
+        tab.vditor.destroy()
+      } catch {
+        // destroy 偶发抛错，忽略
+      }
+      tab.vditor = null
+    }
+  }
+  const tab = activeTab()
+  if (tab) activateEditor(tab)
+})

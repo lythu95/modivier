@@ -13,6 +13,7 @@ import {
 import { attachTabDom, currentContent, destroyTabEditors } from './editors'
 import { appAlert, showAppDialog } from './ui/dialog'
 import { invoke, openDialog, saveDialog } from './lib/tauri'
+import { t } from './i18n'
 
 const MD_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd', 'txt'] }]
 
@@ -91,7 +92,7 @@ export async function openPath(path: string): Promise<void> {
     })
     attachAndRegister(tab)
   } catch (e) {
-    await appAlert(String(e), '打开失败')
+    await appAlert(String(e), t('dlg.openFail'))
   }
 }
 
@@ -110,7 +111,7 @@ export async function openViaDialog(): Promise<void> {
   const picked = await openDialog({
     multiple: true,
     filters: MD_FILTER,
-    title: '打开 Markdown 文件',
+    title: t('menu.open'),
   })
   if (!picked) return
   const list = Array.isArray(picked) ? picked : [picked]
@@ -126,7 +127,7 @@ export async function saveTab(tab: Tab, saveAs = false): Promise<boolean> {
     path = await saveDialog({
       defaultPath: path ?? defaultName,
       filters: MD_FILTER,
-      title: '保存 Markdown 文件',
+      title: t('menu.saveAs'),
     })
     if (!path) return false
   }
@@ -135,7 +136,7 @@ export async function saveTab(tab: Tab, saveAs = false): Promise<boolean> {
     markSaved(tab, path)
     return true
   } catch (e) {
-    await appAlert(String(e), '保存失败')
+    await appAlert(String(e), t('dlg.saveFail'))
     return false
   }
 }
@@ -145,12 +146,12 @@ export async function closeTabInteractive(tab: Tab): Promise<boolean> {
   tab.content = currentContent(tab)
   if (hasUnsavedChanges(tab)) {
     const action = await showAppDialog({
-      title: '未保存的修改',
-      message: `“${tab.name}”尚未保存，关闭后将丢失修改。`,
+      title: t('dlg.unsavedTitle'),
+      message: t('dlg.unsavedTab', { name: tab.name }),
       buttons: [
-        { label: '不保存', value: 'discard', kind: 'danger' },
-        { label: '取消', value: 'cancel' },
-        { label: '保存', value: 'save', kind: 'primary' },
+        { label: t('dlg.discard'), value: 'discard', kind: 'danger' },
+        { label: t('dlg.cancel'), value: 'cancel' },
+        { label: t('dlg.save'), value: 'save', kind: 'primary' },
       ],
       cancelValue: 'cancel',
     })

@@ -14,7 +14,9 @@
 
 - **所见即所得编辑**（Vditor 即时渲染模式，行为最接近 Typora：光标所在块显示源码，其余渲染成稿）
 - **源码模式**（CodeMirror 6，`Ctrl+/` 与所见即所得双向切换，内容自动同步）
-- **多标签页**（拖入文件、`Ctrl+O`、`Ctrl+T`、中键/Ctrl+W 关闭、`Ctrl+Tab` 循环、`Ctrl+1..9` 直达）
+- **多标签页**（拖入文件、`Ctrl+O`、`Ctrl+N`、中键/Ctrl+W 关闭、`Ctrl+Tab` 循环、`Ctrl+1..9` 直达）
+- **状态栏**（行列位置、选中字数、全文字数；右下角 Markdown/Source 与 Light/Dark 快速切换）
+- **多语言**（简体中文 / 繁體中文 / English / 日本語，菜单内切换，跟随系统初始化）
 - **本地图片**：自动解析 Markdown 内的相对路径图片并在编辑器中显示
 - **浅色 / 深色主题**（跟随系统初始化，手动切换后记忆）
 - **编码兼容**：读取 UTF-8 / UTF-8 BOM / GBK；保存统一写出 UTF-8（无 BOM）
@@ -26,9 +28,9 @@
 | 快捷键 | 功能 |
 | --- | --- |
 | `Ctrl+O` | 打开文件 |
-| `Ctrl+T` | 新建标签页 |
+| `Ctrl+N` | 新建文件 |
 | `Ctrl+S` / `Ctrl+Shift+S` | 保存 / 另存为 |
-| `Ctrl+/` | 切换 所见即所得 ⇄ 源码 |
+| `Ctrl+/` | 切换 Markdown / 源码模式 |
 | `Ctrl+W` | 关闭当前标签页 |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | 下一个 / 上一个标签页 |
 | `Ctrl+1` … `Ctrl+9` | 切换到第 n 个标签页 |
@@ -80,9 +82,10 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 ├─ scripts/            # vditor 资源复制、图标生成脚本
 ├─ src/                # 前端（原生 TS）
 │  ├─ lib/tauri.ts     # Tauri API 封装（含浏览器降级）
-│  ├─ ui/              # 标题栏 / 标签条 / 菜单
+│  ├─ ui/              # 标题栏 / 标签条 / 菜单 / 对话框 / 状态栏
 │  ├─ state.ts         # 标签页状态
 │  ├─ editors.ts       # Vditor + CodeMirror 双编辑器封装
+│  ├─ i18n.ts          # 多语言字典（简中/繁中/英/日）
 │  ├─ files.ts         # 打开/保存/关闭流程
 │  ├─ images.ts        # 相对路径图片解析
 │  └─ main.ts          # 入口：快捷键、拖放、单实例、关闭确认

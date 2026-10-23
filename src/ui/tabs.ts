@@ -1,6 +1,7 @@
 import { setActive, subscribe, hasUnsavedChanges, tabs, activeId, type Tab } from '../state'
 import { closeTabInteractive, closeOtherTabs } from '../files'
 import { showTabContextMenu } from './menu'
+import { t } from '../i18n'
 
 /** 渲染标题栏中的标签条 */
 export function setupTabsBar(bar: HTMLElement): void {
@@ -68,7 +69,7 @@ function renderTab(tab: Tab): HTMLElement {
   const close = document.createElement('button')
   close.className = 'tab-close'
   close.innerHTML = CLOSE_SVG
-  close.title = '关闭 (Ctrl+W)'
+  close.title = t('tt.closeTab')
   el.appendChild(close)
   return el
 }

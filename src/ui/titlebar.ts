@@ -1,4 +1,5 @@
 import { nativeWindow, isTauri } from '../lib/tauri'
+import { t, onLocaleChange } from '../i18n'
 import { showAppMenu } from './menu'
 
 /** 自定义标题栏：菜单按钮 + 窗口控制按钮 + 最大化状态图标 */
@@ -9,6 +10,14 @@ export async function setupTitlebar(root: HTMLElement): Promise<void> {
   const closeBtn = root.querySelector<HTMLButtonElement>('#win-close')!
 
   menuBtn.addEventListener('click', () => showAppMenu(menuBtn))
+
+  const applyTexts = () => {
+    menuBtn.title = t('tt.menu')
+    minBtn.title = t('tt.min')
+    closeBtn.title = t('tt.close')
+  }
+  applyTexts()
+  onLocaleChange(applyTexts)
 
   if (!isTauri) {
     // 浏览器调试模式下隐藏窗口控制按钮
@@ -24,9 +33,10 @@ export async function setupTitlebar(root: HTMLElement): Promise<void> {
   const refreshMaxIcon = async () => {
     const maximized = await win.isMaximized()
     maxBtn.innerHTML = maximized ? SVG_RESTORE : SVG_MAXIMIZE
-    maxBtn.title = maximized ? '向下还原' : '最大化'
+    maxBtn.title = maximized ? t('tt.restore') : t('tt.max')
   }
   await win.onResized(() => void refreshMaxIcon())
+  onLocaleChange(() => void refreshMaxIcon())
   await refreshMaxIcon()
 }
 

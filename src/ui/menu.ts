@@ -1,6 +1,7 @@
 import { getTheme, toggleTheme } from '../theme'
 import { activeTab, type Tab } from '../state'
 import { APP_NAME, APP_TAGLINE, APP_VERSION } from '../app-info'
+import { LANGUAGES, getLocale, setLocale, t } from '../i18n'
 import { closeTabInteractive, closeOtherTabs, newUntitledTab, openViaDialog, saveTab } from '../files'
 import { toggleMode } from '../editors'
 import { revealInDir } from '../lib/tauri'
@@ -12,6 +13,10 @@ export interface MenuItem {
   danger?: boolean
   separator?: boolean
   disabled?: boolean
+  /** 子菜单（hover 展开） */
+  children?: MenuItem[]
+  /** 勾选标记（用于单选语言这类状态） */
+  checked?: boolean
   action?: () => void | Promise<void>
 }
 
@@ -32,8 +37,14 @@ function onEsc(e: KeyboardEvent): void {
   if (e.key === 'Escape') closePopup()
 }
 
-export function showMenu(x: number, y: number, items: MenuItem[], placement: 'bottom-left' | 'cursor' = 'cursor'): void {
-  closePopup()
+/** 关闭同级其他子菜单，保留 belongTo 项的 */
+function closeSubs(pop: HTMLElement, belongTo?: HTMLElement): void {
+  pop.querySelectorAll<HTMLElement>(':scope > .menu-item > .menu-pop').forEach((el) => {
+    if (el.parentElement !== belongTo) el.remove()
+  })
+}
+
+function buildPop(items: MenuItem[]): HTMLElement {
   const pop = document.createElement('div')
   pop.className = 'menu-pop'
   for (const item of items) {
@@ -43,24 +54,69 @@ export function showMenu(x: number, y: number, items: MenuItem[], placement: 'bo
       pop.appendChild(sep)
       continue
     }
-    const btn = document.createElement('button')
-    btn.className = 'menu-item' + (item.danger ? ' danger' : '')
-    btn.disabled = item.disabled ?? false
+
+    // 菜单项用 div 而非 button：有子菜单时内部还要嵌套菜单（button 内不允许交互元素）
+    const btn = document.createElement('div')
+    btn.className = 'menu-item' + (item.danger ? ' danger' : '') + (item.disabled ? ' disabled' : '')
+    btn.setAttribute('role', 'menuitem')
+
+    const labelWrap = document.createElement('span')
+    labelWrap.className = 'menu-label'
+    if (item.checked !== undefined) {
+      const check = document.createElement('span')
+      check.className = 'menu-check'
+      check.textContent = item.checked ? '✓' : ''
+      labelWrap.appendChild(check)
+    }
     const label = document.createElement('span')
     label.textContent = item.label ?? ''
-    btn.appendChild(label)
+    labelWrap.appendChild(label)
+    btn.appendChild(labelWrap)
+
     if (item.kbd) {
       const kbd = document.createElement('span')
       kbd.className = 'menu-kbd'
       kbd.textContent = item.kbd
       btn.appendChild(kbd)
     }
-    btn.addEventListener('click', () => {
-      closePopup()
-      void item.action?.()
-    })
+
+    if (item.children) {
+      const arrow = document.createElement('span')
+      arrow.className = 'menu-arrow'
+      arrow.textContent = '›'
+      btn.appendChild(arrow)
+      btn.addEventListener('mouseenter', () => {
+        closeSubs(pop, btn)
+        if (!btn.querySelector(':scope > .menu-pop')) {
+          const sub = buildPop(item.children!)
+          sub.classList.add('sub')
+          btn.appendChild(sub)
+        }
+      })
+    } else {
+      btn.addEventListener('mouseenter', () => closeSubs(pop))
+    }
+
+    if (!item.children) {
+      btn.addEventListener('click', () => {
+        closePopup()
+        void item.action?.()
+      })
+    }
+
     pop.appendChild(btn)
   }
+  return pop
+}
+
+export function showMenu(
+  x: number,
+  y: number,
+  items: MenuItem[],
+  placement: 'bottom-left' | 'cursor' = 'cursor',
+): void {
+  closePopup()
+  const pop = buildPop(items)
   document.body.appendChild(pop)
   // 先挂载后测量，保证弹出位置不越界
   const rect = pop.getBoundingClientRect()
@@ -76,18 +132,17 @@ export function showMenu(x: number, y: number, items: MenuItem[], placement: 'bo
 /** 左上角主菜单 */
 export function showAppMenu(anchor: HTMLElement): void {
   const rect = anchor.getBoundingClientRect()
-  const dark = getTheme() === 'dark'
   showMenu(
     rect.left,
     rect.bottom + 4,
     [
-      { label: '打开文件…', kbd: 'Ctrl+O', action: openViaDialog },
-      { label: '新建标签页', kbd: 'Ctrl+T', action: newUntitledTab },
+      { label: t('menu.open'), kbd: 'Ctrl+O', action: openViaDialog },
+      { label: t('menu.newFile'), kbd: 'Ctrl+N', action: newUntitledTab },
       { separator: true },
-      { label: '保存', kbd: 'Ctrl+S', action: () => onSave(false) },
-      { label: '另存为…', kbd: 'Ctrl+Shift+S', action: () => onSave(true) },
+      { label: t('menu.save'), kbd: 'Ctrl+S', action: () => onSave(false) },
+      { label: t('menu.saveAs'), kbd: 'Ctrl+Shift+S', action: () => onSave(true) },
       {
-        label: '切换 源码 / 所见即所得',
+        label: t('menu.toggleMode'),
         kbd: 'Ctrl+/',
         action: () => {
           const tab = activeTab()
@@ -95,23 +150,25 @@ export function showAppMenu(anchor: HTMLElement): void {
         },
       },
       { separator: true },
-      { label: dark ? '浅色主题' : '深色主题', action: toggleTheme },
+      {
+        label: getTheme() === 'dark' ? t('menu.themeLight') : t('menu.themeDark'),
+        action: toggleTheme,
+      },
+      {
+        label: t('menu.language'),
+        children: LANGUAGES.map((l) => ({
+          label: l.label,
+          checked: getLocale() === l.value,
+          action: () => setLocale(l.value),
+        })),
+      },
       { separator: true },
-      { label: '关闭标签页', kbd: 'Ctrl+W', action: onCloseActive },
+      { label: t('menu.closeTab'), kbd: 'Ctrl+W', action: onCloseActive },
       { separator: true },
-      { label: `关于 ${APP_NAME}`, action: showAbout },
+      { label: t('menu.about', { name: APP_NAME }), action: showAbout },
     ],
     'bottom-left',
   )
-}
-
-function showAbout(): void {
-  void showAppDialog({
-    title: '关于',
-    message: `${APP_NAME} —— ${APP_TAGLINE}\n\n版本 ${APP_VERSION}\nTauri 2 · Vditor · CodeMirror 6`,
-    buttons: [{ label: '确定', value: 'ok', kind: 'primary' }],
-    cancelValue: 'ok',
-  })
 }
 
 function onSave(as: boolean): void {
@@ -124,21 +181,30 @@ function onCloseActive(): void {
   if (tab) void closeTabInteractive(tab)
 }
 
+function showAbout(): void {
+  void showAppDialog({
+    title: t('dlg.aboutTitle'),
+    message: `${APP_NAME} —— ${APP_TAGLINE}\n\n${t('dlg.version', { v: APP_VERSION })}\nTauri 2 · Vditor · CodeMirror 6`,
+    buttons: [{ label: t('dlg.ok'), value: 'ok', kind: 'primary' }],
+    cancelValue: 'ok',
+  })
+}
+
 /** 标签页右键菜单 */
 export function showTabContextMenu(x: number, y: number, tab: Tab): void {
   showMenu(x, y, [
-    { label: '关闭标签页', action: () => void closeTabInteractive(tab) },
-    { label: '关闭其他标签页', action: () => void closeOtherTabs(tab) },
+    { label: t('ctx.closeTab'), action: () => void closeTabInteractive(tab) },
+    { label: t('ctx.closeOthers'), action: () => void closeOtherTabs(tab) },
     { separator: true },
     {
-      label: '复制文件路径',
+      label: t('ctx.copyPath'),
       disabled: !tab.path,
       action: async () => {
         if (tab.path) await navigator.clipboard.writeText(tab.path)
       },
     },
     {
-      label: '在资源管理器中显示',
+      label: t('ctx.reveal'),
       disabled: !tab.path,
       action: async () => {
         if (tab.path) await revealInDir(tab.path)

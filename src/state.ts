@@ -1,5 +1,6 @@
 import type Vditor from 'vditor'
 import type { EditorView } from '@codemirror/view'
+import { t } from './i18n'
 
 export type Mode = 'ir' | 'source'
 
@@ -51,7 +52,7 @@ let untitledSeq = 0
 
 export function nextUntitledName(): string {
   untitledSeq += 1
-  return `未命名-${untitledSeq}`
+  return t('untitled', { n: untitledSeq })
 }
 
 export function registerTab(tab: Tab, activate = true): void {
