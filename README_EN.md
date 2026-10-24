@@ -10,6 +10,7 @@
 [![License](https://img.shields.io/github/license/lythu95/modivier)](./LICENSE)
 [![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
 [![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
+[![Platform](https://img.shields.io/badge/macOS-10.13%2B-000000?logo=apple&logoColor=fff)](https://www.apple.com/macos)
 [![Installer](https://img.shields.io/badge/installer-%7E5MB-brightgreen)](../../releases)
 
 [简体中文](./README.md) ｜ [繁體中文](./README_ZH-TW.md) ｜ **English** ｜ [日本語](./README_JA.md)
@@ -41,7 +42,7 @@ Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, si
 - **VSCode-style full-width scrolling**: content is centered, but scrolling anywhere in the content area scrolls the document
 - **Encoding tolerant**: reads UTF-8 / UTF-8 BOM / GBK; always saves UTF-8 (no BOM)
 - **Startup performance**: the large editor modules (Vditor/CodeMirror) are code-split and loaded on demand, the window shows first, and unused vditor renderers (mathjax/graphviz/echarts…) are trimmed from the bundle; cold start ≈ 0.5–0.7 s, installer ≈ 5 MB
-- **Single instance + file association**: double-clicking `.md` in Explorer (or "Open with") focuses the running window and opens a new tab; the installer registers `.md` / `.markdown` associations; the portable build can register itself from the menu ("Associate .md files", per-user, no admin needed)
+- **Single instance + file association**: double-clicking `.md` (or "Open with") focuses the running window and opens a new tab. Windows: the installer registers `.md` / `.markdown` associations, and the portable build can register itself from the menu ("Associate .md files", per-user, no admin needed); macOS: drag the app into Applications, then pick it in Finder's "Open With" — double-click just works; Linux: deb/rpm packages ship the MIME associations
 - **Window state memory**: size, position and maximized state are saved automatically and restored on next launch
 - Drop files onto the window to open them; closing unsaved tabs/windows asks for confirmation (normalization during load doesn't count as a modification, so untouched files close silently)
 
@@ -60,26 +61,28 @@ Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, si
 
 ## Download & install
 
-Grab `MoDiViEr_x.y.z_x64-setup.exe` (a ~5 MB NSIS installer) from the [Releases](../../releases) page. It registers `.md` / `.markdown` file associations, so double-clicking a Markdown file in Explorer opens it right away.
+Installers for all platforms are available on the [Releases](../../releases) page.
 
-You can also build from source: the output `src-tauri/target/release/modivier.exe` is itself a portable single file, and the menu item "Associate .md files" registers it with the system's "Open with" list (per-user, no admin needed).
+**Windows**: grab `MoDiViEr_x.y.z_x64-setup.exe` (a ~5 MB NSIS installer). It registers `.md` / `.markdown` associations, so double-clicking a Markdown file opens it right away. The output of `npm run tauri build`, `src-tauri/target/release/modivier.exe`, is itself a portable single file — the menu item "Associate .md files" registers it with the system's "Open with" list (per-user, no admin needed). Windows 10 / 11 ships WebView2 — no extra runtime required.
 
-Windows 10 / 11 ships WebView2 — no extra runtime required.
+**macOS** (Apple Silicon): download `MoDiViEr_x.y.z_aarch64.dmg`, drag MoDiViEr.app into Applications and launch it once; then right-click a `.md` file → Open With → MoDiViEr, or set it as the default via Get Info (⌘I) → "Open with" → "Change All…". Double-clicking now opens the file directly (a second file opens as a new tab in the running window). The bundle is unsigned: if Gatekeeper blocks the first launch, right-click → Open.
+
+**Linux**: `npm run tauri build` produces deb / rpm packages (Markdown MIME associations included); build an AppImage on demand with `npx tauri build --bundles appimage`.
 
 ## Development
 
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) ≥ 18
-- [Rust](https://www.rust-lang.org/) stable (MSVC toolchain)
-- Windows 10/11 (WebView2 included)
+- [Rust](https://www.rust-lang.org/) stable (MSVC toolchain on Windows)
+- Windows 10/11 (WebView2 included), macOS 10.13+, or Linux (WebKitGTK 4.1 and friends)
 
 ### Common commands
 
 ```bash
 npm install         # install dependencies (postinstall copies vditor static assets to public/vditor)
 npm run tauri dev   # develop with Tauri
-npm run tauri build # build the NSIS installer into src-tauri/target/release/bundle/ (MoDiViEr_x.y.z_x64-setup.exe)
+npm run tauri build # bundle into src-tauri/target/release/bundle/: NSIS on Windows, DMG on macOS, deb/rpm on Linux
 ```
 
 `npm run dev` debugs the UI in a plain browser without Tauri (file-related features degrade gracefully).
@@ -96,7 +99,7 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| Shell | Tauri 2 | System WebView2; package size and memory far below Electron; the Rust side only does file IO, keeping the attack surface small |
+| Shell | Tauri 2 | System WebView (WebView2 / WKWebView / WebKitGTK); package size and memory far below Electron; the Rust side only does file IO, keeping the attack surface small |
 | WYSIWYG | [Vditor](https://github.com/Vanessa219/vditor) (IR mode) | Instant-rendering mode was designed to reproduce Typora's interaction; tables/code blocks/math/flowcharts out of the box (assets localized, works offline) |
 | Source mode | CodeMirror 6 | Modern lightweight code editor with Markdown highlighting and search |
 | Frontend | Vanilla TypeScript + Vite | The UI is just a title bar + tab strip + editor area; no framework |
@@ -107,6 +110,7 @@ Implementation notes:
 - **Local images** are resolved via the Tauri asset protocol (`convertFileSrc`) plus a MutationObserver that rewrites relative paths to absolute; the edited source text stays untouched.
 - **Vditor assets are localized**: `postinstall` copies `node_modules/vditor/dist` into `public/vditor`, so its lazily loaded highlight/katex/mermaid all run locally with no network dependency.
 - **Vditor initialization is async** (Lute must load first); instance methods are unavailable before the `after` callback — the code guards for readiness uniformly. A pitfall worth knowing if you integrate it.
+- **Cross-platform bundling**: bundle targets are split per platform into `tauri.{windows,macos,linux}.conf.json`, merged automatically by Tauri for the current OS; on macOS double-clicked files arrive via Apple Events (`RunEvent::Opened`) instead of argv, which the Rust side forwards to the frontend, with a launch-args cache as a fallback when the webview isn't ready yet.
 
 ## Project layout
 
@@ -121,7 +125,7 @@ Implementation notes:
 │  ├─ files.ts         # open/save/close flows
 │  ├─ images.ts        # relative-path image resolution
 │  └─ main.ts          # entry: shortcuts, drag & drop, single instance, close confirmation
-└─ src-tauri/          # Rust backend (file IO, encoding detection, single instance, window)
+└─ src-tauri/          # Rust backend + per-platform bundling (tauri.{windows,macos,linux}.conf.json)
 ```
 
 ## Non-goals

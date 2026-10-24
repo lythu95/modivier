@@ -10,6 +10,7 @@
 [![License](https://img.shields.io/github/license/lythu95/modivier)](./LICENSE)
 [![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
 [![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
+[![Platform](https://img.shields.io/badge/macOS-10.13%2B-000000?logo=apple&logoColor=fff)](https://www.apple.com/macos)
 [![Installer](https://img.shields.io/badge/installer-%7E5MB-brightgreen)](../../releases)
 
 **简体中文** ｜ [繁體中文](./README_ZH-TW.md) ｜ [English](./README_EN.md) ｜ [日本語](./README_JA.md)
@@ -41,7 +42,7 @@
 - **VSCode 式全宽滚动**：内容居中排版，但整个内容区任意位置滚轮/翻页都作用于文档
 - **编码兼容**：读取 UTF-8 / UTF-8 BOM / GBK；保存统一写出 UTF-8（无 BOM）
 - **启动性能**：编辑器大模块（Vditor/CodeMirror）按需分包、窗口先行显示，vditor 未用渲染器（mathjax/graphviz/echarts 等）已从打包裁剪；冷启动约 0.5~0.7s，安装包约 5MB
-- **单实例 + 文件关联**：资源管理器里双击 `.md` / 右键"打开方式"会聚焦已运行窗口并开新标签；安装包已注册 `.md` / `.markdown` 关联；便携单文件可在菜单里点"关联 .md 文件"一键注册到系统"打开方式"列表（当前用户级、免管理员）
+- **单实例 + 文件关联**：双击 `.md` / 右键“打开方式”会聚焦已运行窗口并开新标签。Windows：安装包自动注册 `.md` / `.markdown` 关联，便携单文件可在菜单里点“关联 .md 文件”一键注册（当前用户级、免管理员）；macOS：应用拖入“应用程序”后，在 Finder“打开方式”中选择即可，双击直达；Linux：deb / rpm 包内置 MIME 关联
 - **窗口状态记忆**：尺寸、位置、最大化状态自动保存，下次启动恢复
 - 窗口拖拽文件直接打开；未保存关闭标签/窗口时有确认提示（编辑器加载时的规范化不计为修改，原样关闭不打扰）
 
@@ -60,26 +61,28 @@
 
 ## 下载与安装
 
-从 [Releases](../../releases) 页面下载 `MoDiViEr_x.y.z_x64-setup.exe`（约 5MB 的 NSIS 安装包）。安装后自动注册 `.md` / `.markdown` 文件关联，资源管理器里双击即可打开。
+各平台安装包均可从 [Releases](../../releases) 页面获取。
 
-也可以从源码构建：`npm run tauri build` 的产物 `src-tauri/target/release/modivier.exe` 本身就是免安装的便携单文件，可在菜单里点"关联 .md 文件"注册到系统"打开方式"列表（当前用户级、免管理员）。
+**Windows**：下载 `MoDiViEr_x.y.z_x64-setup.exe`（约 5MB 的 NSIS 安装包），安装后自动注册 `.md` / `.markdown` 文件关联，资源管理器里双击即可打开。`npm run tauri build` 的产物 `src-tauri/target/release/modivier.exe` 本身就是免安装的便携单文件，可在菜单里点“关联 .md 文件”注册到系统“打开方式”列表（当前用户级、免管理员）。Windows 10 / 11 自带 WebView2，无需额外安装运行时。
 
-Windows 10 / 11 自带 WebView2，无需额外安装运行时。
+**macOS**（Apple Silicon）：下载 `MoDiViEr_x.y.z_aarch64.dmg`，把 MoDiViEr.app 拖入“应用程序”并启动一次；之后在 `.md` 文件上右键 → 打开方式 选择 MoDiViEr，或在“显示简介”（⌘I）→ 打开方式 → “全部更改…”设为默认，双击即可打开（已运行时在现有窗口开新标签）。安装包未签名：首次打开若被 Gatekeeper 拦截，右键 → 打开 即可。
+
+**Linux**：`npm run tauri build` 产出 deb / rpm 包（已注册 Markdown MIME 关联）；如需 AppImage 可用 `npx tauri build --bundles appimage` 追加。
 
 ## 开发
 
 ### 环境要求
 
 - [Node.js](https://nodejs.org/) ≥ 18
-- [Rust](https://www.rust-lang.org/) stable（MSVC 工具链）
-- Windows 10/11（自带 WebView2）
+- [Rust](https://www.rust-lang.org/) stable（Windows 需 MSVC 工具链）
+- Windows 10/11（自带 WebView2）、macOS 10.13+，或 Linux（需 WebKitGTK 4.1 等依赖）
 
 ### 常用命令
 
 ```bash
 npm install         # 安装依赖（postinstall 会把 vditor 静态资源复制到 public/vditor）
 npm run tauri dev   # 开发调试
-npm run tauri build # 打包 NSIS 安装包到 src-tauri/target/release/bundle/（MoDiViEr_x.y.z_x64-setup.exe）
+npm run tauri build # 打包到 src-tauri/target/release/bundle/：Windows NSIS、macOS DMG、Linux deb/rpm（按当前系统）
 ```
 
 `npm run dev` 可以脱离 Tauri 在纯浏览器里调试 UI（文件相关功能自动降级禁用）。
@@ -96,7 +99,7 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 
 | 层 | 选择 | 理由 |
 | --- | --- | --- |
-| 外壳 | Tauri 2 | 系统 WebView2，包体积与内存远小于 Electron；Rust 侧仅做文件 IO，面攻击小 |
+| 外壳 | Tauri 2 | 系统 WebView（WebView2 / WKWebView / WebKitGTK），包体积与内存远小于 Electron；Rust 侧仅做文件 IO，面攻击小 |
 | 所见即所得 | [Vditor](https://github.com/Vanessa219/vditor)（IR 模式） | 即时渲染模式专为复刻 Typora 交互设计，开箱支持表格/代码块/数学/流程图（资源已本地化，离线可用） |
 | 源码模式 | CodeMirror 6 | 现代轻量的代码编辑器，Markdown 语法高亮、查找 |
 | 前端 | 原生 TypeScript + Vite | 界面只有一个标题栏 + 标签条 + 编辑区，不引入框架 |
@@ -107,6 +110,7 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 - **本地图片**通过 Tauri asset 协议（`convertFileSrc`）+ MutationObserver 将相对路径改写为绝对地址，编辑的源码文本保持原样不受污染。
 - **Vditor 资源本地化**：`postinstall` 将 `node_modules/vditor/dist` 复制到 `public/vditor`，其懒加载的 highlight/katex/mermaid 全部走本地，无网络依赖。
 - **Vditor 初始化是异步的**（需先加载 Lute），实例方法在 `after` 回调前不可用，代码中统一做了就绪守卫——这是接入时踩过的坑。
+- **跨平台打包**：打包目标按平台拆分在 `tauri.{windows,macos,linux}.conf.json`，Tauri 按当前系统自动合并；macOS 双击文件经 Apple Event（`RunEvent::Opened`）投递而非 argv，Rust 侧接收后转发给前端，早于 webview 就绪时由启动参数缓存兜底。
 
 ## 目录结构
 
@@ -121,7 +125,7 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 │  ├─ files.ts         # 打开/保存/关闭流程
 │  ├─ images.ts        # 相对路径图片解析
 │  └─ main.ts          # 入口：快捷键、拖放、单实例、关闭确认
-└─ src-tauri/          # Rust 后端（文件 IO、编码探测、单实例、窗口）
+└─ src-tauri/          # Rust 后端 + 平台打包配置（tauri.{windows,macos,linux}.conf.json）
 ```
 
 ## 明确不做的功能

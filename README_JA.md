@@ -10,6 +10,7 @@
 [![License](https://img.shields.io/github/license/lythu95/modivier)](./LICENSE)
 [![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
 [![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
+[![Platform](https://img.shields.io/badge/macOS-10.13%2B-000000?logo=apple&logoColor=fff)](https://www.apple.com/macos)
 [![Installer](https://img.shields.io/badge/installer-%7E5MB-brightgreen)](../../releases)
 
 [简体中文](./README.md) ｜ [繁體中文](./README_ZH-TW.md) ｜ [English](./README_EN.md) ｜ **日本語**
@@ -41,7 +42,7 @@
 - **VSCode 式全幅スクロール**：本文は中央寄せですが、コンテンツ領域のどこでスクロール/ページ送りしても文書に作用
 - **エンコーディング互換**：UTF-8 / UTF-8 BOM / GBK を読込。保存は UTF-8（BOM なし）で統一
 - **起動性能**：エディターの大型モジュール（Vditor/CodeMirror）は必要時に分割読込、ウィンドウを先に表示、vditor の未使用レンダラー（mathjax/graphviz/echarts 等）はパッケージから除外。コールドスタート約 0.5〜0.7 秒、インストーラー約 5MB
-- **単一インスタンス + ファイル関連付け**：エクスプローラーで `.md` をダブルクリック/「プログラムから開く」と、既存ウィンドウにフォーカスして新規タブを開きます。インストーラーは `.md` / `.markdown` の関連付けを登録済み。ポータブル版はメニューの「.md ファイルを関連付け」からシステムの「プログラムから開く」に一発登録できます（現在のユーザー単位、管理者権限不要）
+- **単一インスタンス + ファイル関連付け**：`.md` のダブルクリック/「プログラムから開く」で、既存ウィンドウにフォーカスして新規タブを開きます。Windows：インストーラーが `.md` / `.markdown` を自動登録、ポータブル版はメニューの「.md ファイルを関連付け」から一発登録（現在のユーザー単位、管理者権限不要）。macOS：アプリを「アプリケーション」に入れた後、Finder の「このアプリケーションで開く」から選択すればダブルクリックで開けます。Linux：deb / rpm が MIME 関連付けを同梱
 - **ウィンドウ状態の記憶**：サイズ・位置・最大化状態を自動保存し、次回起動時に復元
 - ウィンドウへのファイルドロップで直接開く。未保存のタブ/ウィンドウを閉じる際は確認します（読み込み時の正規化は変更とみなさないので、手を加えていないファイルはそのまま閉じます）
 
@@ -60,26 +61,28 @@
 
 ## ダウンロードとインストール
 
-[Releases](../../releases) ページから `MoDiViEr_x.y.z_x64-setup.exe`（約 5MB の NSIS インストーラー）をダウンロードしてください。インストール時に `.md` / `.markdown` の関連付けが自動登録され、エクスプローラーでダブルクリックするだけで開けます。
+各プラットフォームのインストーラーは [Releases](../../releases) ページから入手できます。
 
-ソースからビルドすることもできます：`npm run tauri build` の成果物 `src-tauri/target/release/modivier.exe` はインストール不要のポータブル単体ファイルで、メニューの「.md ファイルを関連付け」からシステムの「プログラムから開く」に登録できます（現在のユーザー単位、管理者権限不要）。
+**Windows**：`MoDiViEr_x.y.z_x64-setup.exe`（約 5MB の NSIS インストーラー）をダウンロード。インストール時に `.md` / `.markdown` の関連付けが自動登録され、ダブルクリックするだけで開けます。`npm run tauri build` の成果物 `src-tauri/target/release/modivier.exe` はインストール不要のポータブル単体ファイルで、メニューの「.md ファイルを関連付け」からシステムの「プログラムから開く」に登録できます（現在のユーザー単位、管理者権限不要）。Windows 10 / 11 には WebView2 が内蔵されており、追加のランタイムは不要です。
 
-Windows 10 / 11 には WebView2 が内蔵されており、追加のランタイムは不要です。
+**macOS**（Apple Silicon）：`MoDiViEr_x.y.z_aarch64.dmg` をダウンロードし、MoDiViEr.app を「アプリケーション」にドラッグして一度起動。その後 `.md` ファイルを右クリック → 「このアプリケーションで開く」で選ぶか、「情報を見る」（⌘I）→ 「このアプリケーションで開く」→ 「すべてを変更…」でデフォルトに設定すると、ダブルクリックで直接開けます（起動済みなら既存ウィンドウに新規タブで開きます）。パッケージは未署名のため、初回起動時に Gatekeeper にブロックされたら右クリック → 「開く」で起動できます。
+
+**Linux**：`npm run tauri build` で deb / rpm パッケージを生成（Markdown MIME 関連付けを同梱）。AppImage が必要な場合は `npx tauri build --bundles appimage` で追加ビルドできます。
 
 ## 開発
 
 ### 環境要件
 
 - [Node.js](https://nodejs.org/) ≥ 18
-- [Rust](https://www.rust-lang.org/) stable（MSVC ツールチェーン）
-- Windows 10/11（WebView2 同梱）
+- [Rust](https://www.rust-lang.org/) stable（Windows は MSVC ツールチェーン）
+- Windows 10/11（WebView2 同梱）、macOS 10.13+、または Linux（WebKitGTK 4.1 などの依存が必要）
 
 ### よく使うコマンド
 
 ```bash
 npm install         # 依存関係のインストール（postinstall で vditor の静的アセットを public/vditor にコピー）
 npm run tauri dev   # 開発・デバッグ
-npm run tauri build # NSIS インストーラーを src-tauri/target/release/bundle/ にビルド（MoDiViEr_x.y.z_x64-setup.exe）
+npm run tauri build # src-tauri/target/release/bundle/ にバンドル生成：Windows は NSIS、macOS は DMG、Linux は deb/rpm
 ```
 
 `npm run dev` なら Tauri なしでブラウザだけでも UI をデバッグできます（ファイル関連機能は自動的に無効化）。
@@ -96,7 +99,7 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 
 | レイヤー | 採用技術 | 理由 |
 | --- | --- | --- |
-| シェル | Tauri 2 | システムの WebView2 を使用し、パッケージサイズもメモリも Electron より大幅に小さい。Rust 側はファイル IO のみで攻撃面が小さい |
+| シェル | Tauri 2 | システムの WebView（WebView2 / WKWebView / WebKitGTK）を使用し、パッケージサイズもメモリも Electron より大幅に小さい。Rust 側はファイル IO のみで攻撃面が小さい |
 | WYSIWYG | [Vditor](https://github.com/Vanessa219/vditor)（IR モード） | インスタントレンダリングモードは Typora の操作感の再現を目的に設計。表/コードブロック/数式/フローチャートを標準サポート（アセットはローカル化済み、オフラインで動作） |
 | ソースモード | CodeMirror 6 | モダンで軽量なコードエディター。Markdown シンタックスハイライトと検索 |
 | フロントエンド | 素の TypeScript + Vite | UI はタイトルバー + タブバー + 編集領域のみ。フレームワーク不使用 |
@@ -107,6 +110,7 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 - **ローカル画像**は Tauri asset プロトコル（`convertFileSrc`）+ MutationObserver で相対パスを絶対パスに書き換え。編集対象のソーステキストは汚しません
 - **Vditor アセットのローカル化**：`postinstall` で `node_modules/vditor/dist` を `public/vditor` にコピー。遅延読込される highlight/katex/mermaid もすべてローカルで動作し、ネットワーク不要
 - **Vditor の初期化は非同期**（先に Lute の読込が必要）。`after` コールバック前はインスタンスメソッドが使えないため、コード全体で準備完了ガードを統一実装——連携時に実際にハマった落とし穴です
+- **クロスプラットフォーム バンドル**：バンドルターゲットは `tauri.{windows,macos,linux}.conf.json` にプラットフォーム別に分かれており、Tauri が現在の OS に応じて自動マージします。macOS でファイルをダブルクリックした場合は argv ではなく Apple Event（`RunEvent::Opened`）で届くため、Rust 側で受け取ってフロントエンドへ転送。WebView が未準備の間は起動時引数のキャッシュがフォールバックします
 
 ## ディレクトリ構成
 
@@ -121,7 +125,7 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 │  ├─ files.ts         # 開く/保存/閉じるのフロー
 │  ├─ images.ts        # 相対パス画像の解決
 │  └─ main.ts          # エントリー：ショートカット、ドラッグ＆ドロップ、単一インスタンス、閉じる確認
-└─ src-tauri/          # Rust バックエンド（ファイル IO、エンコーディング判定、単一インスタンス、ウィンドウ）
+└─ src-tauri/          # Rust バックエンド + プラットフォーム別バンドル設定（tauri.{windows,macos,linux}.conf.json）
 ```
 
 ## やらないこと
