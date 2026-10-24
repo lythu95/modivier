@@ -532,7 +532,7 @@ button {
   }
 }
 
-/* 与应用图标同构的 logo：深色圆角块 + 白色 M + 绿色强调条 */
+/* 与应用图标同构的 logo：深色圆角块 + 白色 M + 主题蓝强调条 */
 .welcome-logo {
   position: relative;
   width: 84px;
@@ -558,7 +558,8 @@ button {
   width: 42px;
   height: 7px;
   border-radius: 4px;
-  background: #3e8e56;
+  /* 主题蓝的深底变体，在深色块上更醒目 */
+  background: #4493f8;
 }
 
 /* 深色下页面背景较深，logo 底色调亮一档保持轮廓清晰 */

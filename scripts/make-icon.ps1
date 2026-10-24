@@ -30,8 +30,8 @@ $fmt.LineAlignment = [System.Drawing.StringAlignment]::Center
 $rect = New-Object System.Drawing.RectangleF(0, -18, $size, $size)
 $g.DrawString('M', $font, [System.Drawing.Brushes]::White, $rect, $fmt)
 
-# green accent bar (markdown hr)
-$accent = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 62, 142, 86))
+# blue accent bar (markdown hr) - matches the app accent color
+$accent = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 68, 147, 248))
 $g.FillRectangle($accent, 116, 386, 280, 22)
 
 $outDir = Split-Path -Parent $PSScriptRoot
