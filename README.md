@@ -1,8 +1,26 @@
+<div align="center">
+
+<img src="src-tauri/icons/icon.png" width="88" alt="MoDiViEr" />
+
 # MoDiViEr
 
-**MoDiViEr —— MarkDown Viewer and Editor**
+**MarkDown Viewer and Editor —— 参考 Typora 的轻量 Markdown 阅读与编辑器**
 
-一个参考 [Typora](https://typora.io/) 交互习惯的**轻量 Markdown 阅读与编辑器**，基于 Tauri 2 构建，主打"够轻、够快、够简单"：冷启动几百毫秒、安装包 ~5MB、内存占用 ~80MB，只保留查看与最基础的编辑能力。
+[![Release](https://img.shields.io/github/v/release/lythu95/modivier)](https://github.com/lythu95/modivier/releases)
+[![License](https://img.shields.io/github/license/lythu95/modivier)](./LICENSE)
+[![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
+[![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
+[![Installer](https://img.shields.io/badge/installer-%7E5MB-brightgreen)](../../releases)
+
+**简体中文** ｜ [繁體中文](./README_ZH-TW.md) ｜ [English](./README_EN.md) ｜ [日本語](./README_JA.md)
+
+</div>
+
+基于 [Tauri 2](https://v2.tauri.app) 构建，主打"够轻、够快、够简单"：冷启动约 0.5 秒、安装包约 5MB、内存占用约 80MB，只保留阅读与最基础的编辑能力。
+
+<div align="center">
+  <img src="docs/screenshot.png" width="720" alt="MoDiViEr 界面截图" />
+</div>
 
 ## 为什么做这个
 
@@ -40,6 +58,14 @@
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | 下一个 / 上一个标签页 |
 | `Ctrl+1` … `Ctrl+9` | 切换到第 n 个标签页 |
 
+## 下载与安装
+
+从 [Releases](../../releases) 页面下载 `MoDiViEr_x.y.z_x64-setup.exe`（约 5MB 的 NSIS 安装包）。安装后自动注册 `.md` / `.markdown` 文件关联，资源管理器里双击即可打开。
+
+也可以从源码构建：`npm run tauri build` 的产物 `src-tauri/target/release/modivier.exe` 本身就是免安装的便携单文件，可在菜单里点"关联 .md 文件"注册到系统"打开方式"列表（当前用户级、免管理员）。
+
+Windows 10 / 11 自带 WebView2，无需额外安装运行时。
+
 ## 开发
 
 ### 环境要求
@@ -51,8 +77,8 @@
 ### 常用命令
 
 ```bash
-npm install        # 安装依赖（postinstall 会把 vditor 静态资源复制到 public/vditor）
-npm run tauri dev  # 开发调试
+npm install         # 安装依赖（postinstall 会把 vditor 静态资源复制到 public/vditor）
+npm run tauri dev   # 开发调试
 npm run tauri build # 打包 NSIS 安装包到 src-tauri/target/release/bundle/（MoDiViEr_x.y.z_x64-setup.exe）
 ```
 
@@ -100,4 +126,12 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 
 ## 明确不做的功能
 
-打印、导出 PDF、云同步、图片上传、插件系统、大纲面板、 Vim 模式……按"记事本哲学"，需要时再议。
+打印、导出 PDF、云同步、图片上传、插件系统、Vim 模式……按"记事本哲学"，需要时再议。
+
+## 许可证
+
+本项目基于 [MIT](./LICENSE) 协议开源。
+
+## 反馈
+
+使用中遇到问题或有建议，欢迎在 [GitHub Issues](https://github.com/lythu95/modivier/issues) 或 [Gitee Issues](https://gitee.com/lythu95/modivier/issues) 中提出。
