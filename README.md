@@ -60,6 +60,7 @@ npm run tauri build # 打包 NSIS 安装包到 src-tauri/target/release/bundle/�
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/make-icon.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/make-nsis-header.ps1
 npx tauri icon src-tauri/icons-src/app-icon.png
 ```
 
