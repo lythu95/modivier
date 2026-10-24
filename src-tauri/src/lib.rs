@@ -140,7 +140,15 @@ pub fn run() {
 
     tauri::Builder::default()
         // 窗口尺寸/位置/最大化状态记忆，启动时自动恢复
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .build(),
+        )
         // 单实例：资源管理器中再次打开文件时，把路径转发给已运行的窗口而不是启动第二个进程
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             let files = extract_file_args(&args);
@@ -154,6 +162,19 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(LaunchArgs(Mutex::new(launch_args)))
+        // 窗口在配置里以隐藏状态创建（避免先按默认尺寸闪现再恢复），
+        // 前端就绪后由 JS 显示；这里兜底：前端异常未显示时 3 秒后强制显示
+        .setup(|app| {
+            if let Some(win) = app.get_webview_window("main") {
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                    if !win.is_visible().unwrap_or(true) {
+                        let _ = win.show();
+                    }
+                });
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             read_file,
             write_file,

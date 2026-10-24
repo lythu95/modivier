@@ -70,6 +70,7 @@ export interface NativeWindow {
   isMaximized(): Promise<boolean>
   close(): Promise<void>
   destroy(): Promise<void>
+  show(): Promise<void>
   setTitle(title: string): Promise<void>
   onCloseRequested(handler: () => Promise<void>): Promise<() => void>
   onResized(handler: () => void): Promise<() => void>

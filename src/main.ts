@@ -101,6 +101,12 @@ function renderWelcome(welcome: HTMLElement): void {
 }
 
 async function main(): Promise<void> {
+  // 窗口以隐藏状态创建（见 tauri.conf.json），插件恢复几何后立即显示，
+  // 避免"默认尺寸闪现 → 跳变为记忆尺寸"的观感
+  if (isTauri) {
+    void nativeWindow().then((w) => w?.show()).catch(() => undefined)
+  }
+
   initLocale()
   applyTheme()
   applySourceFont()
