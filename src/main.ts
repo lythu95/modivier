@@ -1,5 +1,4 @@
 import './app.css'
-import 'vditor/dist/index.css'
 
 import { APP_NAME, APP_TAGLINE, APP_VERSION } from './app-info'
 import { apply as applyTheme } from './theme'
@@ -14,7 +13,7 @@ import {
   subscribe,
   tabs,
 } from './state'
-import { focusActiveEditor, toggleMode, updateLayout } from './editors'
+import { focusActiveEditor, toggleMode, updateLayout, warmupEditors } from './editors'
 import {
   closeActiveTab,
   initFileActions,
@@ -104,12 +103,18 @@ async function main(): Promise<void> {
   // 窗口以隐藏状态创建（见 tauri.conf.json），插件恢复几何后立即显示，
   // 避免"默认尺寸闪现 → 跳变为记忆尺寸"的观感
   if (isTauri) {
-    void nativeWindow().then((w) => w?.show()).catch(() => undefined)
+    void nativeWindow()
+      .then((w) => w?.show())
+      .catch((e) => console.error('窗口显示失败：', e))
   }
 
   initLocale()
   applyTheme()
   applySourceFont()
+
+  // 后台预热编辑器大模块（vditor / CodeMirror 已按需分包），
+  // 窗口先显示，首次打开文件时模块已就绪
+  warmupEditors()
 
   const app = document.getElementById('app')!
   app.innerHTML = TEMPLATE

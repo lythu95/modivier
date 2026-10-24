@@ -1,21 +1,3 @@
-import Vditor from 'vditor'
-import { EditorState, Compartment } from '@codemirror/state'
-import {
-  EditorView,
-  keymap,
-  highlightActiveLine,
-} from '@codemirror/view'
-import {
-  defaultKeymap,
-  history,
-  historyKeymap,
-  indentWithTab,
-} from '@codemirror/commands'
-import { markdown } from '@codemirror/lang-markdown'
-import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
-import { oneDark } from '@codemirror/theme-one-dark'
-
 import { getTheme, onThemeChange } from './theme'
 import { onLocaleChange, vditorLang } from './i18n'
 import { activeId, activeTab, notify, tabs, type Tab } from './state'
@@ -34,6 +16,37 @@ export function onCursorActivity(fn: () => void): () => void {
 function emitCursor(): void {
   for (const fn of cursorListeners) fn()
 }
+
+/* ---------------- 编辑器依赖懒加载 ---------------- */
+
+// vditor（含其样式）与 CodeMirror 全量依赖在首次用到时才加载，
+// 启动关键路径只剩轻量外壳，窗口得以先行显示
+let vditorCtorP: Promise<typeof import('vditor').default> | null = null
+
+function loadVditorCtor(): Promise<typeof import('vditor').default> {
+  vditorCtorP ??= Promise.all([import('vditor'), import('vditor/dist/index.css')]).then(
+    ([m]) => m.default,
+  )
+  return vditorCtorP
+}
+
+let cmDepsP: Promise<typeof import('./cm-deps')> | null = null
+
+function loadCmDeps(): Promise<typeof import('./cm-deps')> {
+  cmDepsP ??= import('./cm-deps')
+  return cmDepsP
+}
+
+/** 启动后台预热编辑器大模块（main 在显示窗口后调用） */
+export function warmupEditors(): void {
+  void loadVditorCtor()
+  void loadCmDeps()
+}
+
+const vditorLoading = new WeakSet<Tab>()
+const cmLoading = new WeakSet<Tab>()
+
+/* ---------------- 公共逻辑 ---------------- */
 
 export function currentContent(tab: Tab): string {
   if (tab.mode === 'source' && tab.cm) return tab.cm.state.doc.toString()
@@ -73,58 +86,6 @@ function vditorOptions(value: string, onInput: (v: string) => void, onReady: () 
   }
 }
 
-const cmThemeComp = new Compartment()
-
-const cmLightTheme = EditorView.theme({
-  '&': {
-    color: 'var(--fg)',
-    backgroundColor: 'transparent',
-    fontSize: '15px',
-  },
-  '.cm-content': {
-    fontFamily: 'var(--source-font)',
-    padding: '18px 4px 30vh',
-    caretColor: 'var(--accent)',
-    lineHeight: '1.65',
-  },
-  '.cm-activeLine': {
-    backgroundColor: 'color-mix(in srgb, var(--fg) 5%, transparent)',
-  },
-  '.cm-selectionMatch': {
-    backgroundColor: 'color-mix(in srgb, var(--accent) 25%, transparent)',
-  },
-})
-
-function buildCmExtensions(dark: boolean) {
-  return [
-    history(),
-    EditorView.lineWrapping,
-    highlightActiveLine(),
-    keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
-    markdown(),
-    syntaxHighlighting(defaultHighlightStyle),
-    highlightSelectionMatches(),
-    cmThemeComp.of(dark ? oneDark : cmLightTheme),
-  ]
-}
-
-function cmUpdateListener(onInput: (v: string) => void) {
-  return EditorView.updateListener.of((u) => {
-    if (u.docChanged) onInput(u.state.doc.toString())
-    if (u.docChanged || u.selectionSet) emitCursor()
-  })
-}
-
-function makeCodeMirror(host: HTMLElement, value: string, onInput: (v: string) => void): EditorView {
-  return new EditorView({
-    parent: host,
-    state: EditorState.create({
-      doc: value,
-      extensions: [...buildCmExtensions(getTheme() === 'dark'), cmUpdateListener(onInput)],
-    }),
-  })
-}
-
 /** 创建标签页的 DOM 容器与两个编辑器宿主（编辑器实例按需延迟创建） */
 export function attachTabDom(tab: Tab, parent: HTMLElement): void {
   const root = document.createElement('div')
@@ -144,55 +105,62 @@ export function attachTabDom(tab: Tab, parent: HTMLElement): void {
 
 /** 激活标签页时保证编辑器已创建并展示对应模式 */
 export function activateEditor(tab: Tab): void {
-  if (!tab.vditor) {
-    tab.vditor = new Vditor(
-      tab.vdHost,
-      vditorOptions(
+  if (!tab.vditor && !vditorLoading.has(tab)) {
+    vditorLoading.add(tab)
+    void loadVditorCtor().then((Vditor) => {
+      vditorLoading.delete(tab)
+      // 加载期间标签可能已被关闭
+      if (!tab.root.isConnected || tab.vditor) return
+      tab.vditor = new Vditor(
+        tab.vdHost,
+        vditorOptions(
+          tab.content,
+          (v) => {
+            tab.content = v
+            notify()
+          },
+          () => {
+            // Vditor 初始化时会规范化文本（CRLF 行尾、行尾空白等）。
+            // 文件标签若用户尚未做实质编辑（内容仍与保存基准一致），
+            // 把规范化结果同步为新的保存基准，避免原样关闭被误报"未保存"
+            if (tab.path && vditorReady(tab) && tab.content === tab.savedContent) {
+              const normalized = tab.vditor!.getValue()
+              if (normalized !== tab.savedContent) {
+                tab.content = normalized
+                tab.savedContent = normalized
+                notify()
+              }
+            }
+            if (tab.id === activeId && tab.mode === 'ir') tab.vditor?.focus()
+          },
+        ),
+      )
+      if (tab.id === activeId && tab.mode === 'ir') tab.vditor?.focus()
+    })
+  }
+
+  const wantSource = tab.mode === 'source'
+  if (wantSource && !tab.cm && !cmLoading.has(tab)) {
+    cmLoading.add(tab)
+    void loadCmDeps().then((m) => {
+      cmLoading.delete(tab)
+      if (!tab.root.isConnected || tab.cm) return
+      tab.cm = m.makeCodeMirror(
+        tab.cmHost,
         tab.content,
         (v) => {
           tab.content = v
           notify()
         },
-        () => {
-          // Vditor 初始化时会规范化文本（CRLF 行尾、行尾空白等）。
-          // 文件标签若用户尚未做实质编辑（内容仍与保存基准一致），
-          // 把规范化结果同步为新的保存基准，避免原样关闭被误报"未保存"
-          if (tab.path && vditorReady(tab) && tab.content === tab.savedContent) {
-            const normalized = tab.vditor!.getValue()
-            if (normalized !== tab.savedContent) {
-              tab.content = normalized
-              tab.savedContent = normalized
-              notify()
-            }
-          }
-          if (tab.id === activeId && tab.mode === 'ir') tab.vditor?.focus()
-        },
-      ),
-    )
-  }
-  const wantSource = tab.mode === 'source'
-  if (wantSource) {
-    if (!tab.cm) {
-      tab.cm = makeCodeMirror(tab.cmHost, tab.content, (v) => {
-        tab.content = v
-        notify()
-      })
-    } else {
-      // 重新进入源码模式：用最新内容整体替换（顺带清空历史，避免跨模式撤销混乱）
-      tab.cm.setState(
-        EditorState.create({
-          doc: tab.content,
-          extensions: [
-            ...buildCmExtensions(getTheme() === 'dark'),
-            cmUpdateListener((v) => {
-              tab.content = v
-              notify()
-            }),
-          ],
-        }),
+        emitCursor,
       )
-    }
+      if (tab.id === activeId && tab.mode === 'source') {
+        tab.cm.focus()
+        emitCursor()
+      }
+    })
   }
+
   tab.vdHost.style.display = wantSource ? 'none' : ''
   tab.cmHost.style.display = wantSource ? '' : 'none'
   if (!wantSource && vditorReady(tab) && tab.vditor!.getValue() !== tab.content) {
@@ -214,6 +182,23 @@ export function focusActiveEditor(): void {
 export function toggleMode(tab: Tab): void {
   tab.content = currentContent(tab)
   tab.mode = tab.mode === 'ir' ? 'source' : 'ir'
+  if (tab.mode === 'source' && tab.cm) {
+    // 已有 CodeMirror 实例：整体替换为最新内容（清空撤销栈，避免跨模式混乱）
+    const cm = tab.cm
+    void loadCmDeps().then((m) => {
+      if (cm === tab.cm && tab.root.isConnected) {
+        m.resetCmDoc(
+          cm,
+          tab.content,
+          (v) => {
+            tab.content = v
+            notify()
+          },
+          emitCursor,
+        )
+      }
+    })
+  }
   if (tab.id === activeId) activateEditor(tab)
   notify()
 }
@@ -244,9 +229,10 @@ export function applyThemeToEditors(): void {
         VDITOR_CONTENT_THEME_PATH,
       )
     }
-    tab.cm?.dispatch({
-      effects: cmThemeComp.reconfigure(dark ? oneDark : cmLightTheme),
-    })
+    if (tab.cm) {
+      const cm = tab.cm
+      void loadCmDeps().then((m) => m.reconfigureCmTheme(cm, dark))
+    }
   }
 }
 
