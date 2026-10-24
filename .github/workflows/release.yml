@@ -1,0 +1,155 @@
+name: Release
+
+# 手动触发：仅执行三平台编译（用于验证流程，不发布）
+# 推送 v* 标签：编译 + 发布 GitHub Release + 同步 Gitee Release
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          # macOS 通用二进制（Intel + Apple Silicon 一个安装包）
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            artifact-name: macos-dmg
+            artifact-path: |
+              src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          # Linux：deb + rpm（在 22.04 上编译，兼容较老的 glibc）
+          - platform: ubuntu-22.04
+            args: ''
+            rust-targets: ''
+            artifact-name: linux-packages
+            artifact-path: |
+              src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/rpm/*.rpm
+          # Windows：NSIS 安装包
+          - platform: windows-latest
+            args: ''
+            rust-targets: ''
+            artifact-name: windows-installer
+            artifact-path: |
+              src-tauri/target/release/bundle/nsis/*.exe
+    runs-on: ${{ matrix.settings.platform }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.settings.rust-targets }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri bundles
+        run: npm run tauri build -- ${{ matrix.settings.args }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.settings.artifact-name }}
+          path: ${{ matrix.settings.artifact-path }}
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      HAS_GITEE_TOKEN: ${{ secrets.GITEE_TOKEN != '' }}
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -la dist/
+
+      - name: Create GitHub Release
+        uses: YuZhiYuanOrg/release-sync@v1
+        with:
+          platforms: 'github'
+          tag: ${{ github.ref_name }}
+          release-name: 'MoDiViEr ${{ github.ref_name }}'
+          release-body: |
+            **MoDiViEr —— MarkDown Viewer and Editor**
+
+            | 平台 | 安装包 |
+            | --- | --- |
+            | Windows | `MoDiViEr_*_x64-setup.exe`（NSIS 安装包，注册 .md 文件关联） |
+            | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
+            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
+
+            > macOS 安装包未签名，首次打开需右键 → 打开。
+          draft: 'false'
+          prerelease: ${{ contains(github.ref_name, '-') && 'true' || 'false' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          asset-files: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.deb
+            dist/*.rpm
+
+      - name: Sync Release to Gitee
+        if: env.HAS_GITEE_TOKEN == 'true'
+        uses: YuZhiYuanOrg/release-sync@v1
+        with:
+          platforms: 'gitee'
+          tag: ${{ github.ref_name }}
+          release-name: 'MoDiViEr ${{ github.ref_name }}'
+          release-body: |
+            **MoDiViEr —— MarkDown Viewer and Editor**
+
+            | 平台 | 安装包 |
+            | --- | --- |
+            | Windows | `MoDiViEr_*_x64-setup.exe`（NSIS 安装包，注册 .md 文件关联） |
+            | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
+            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
+
+            > macOS 安装包未签名，首次打开需右键 → 打开。
+          draft: 'false'
+          prerelease: ${{ contains(github.ref_name, '-') && 'true' || 'false' }}
+          gitee-token: ${{ secrets.GITEE_TOKEN }}
+          gitee-owner: 'lythu95'
+          gitee-repo: 'modivier'
+          gitee-target-commitish: 'main'
+          asset-files: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.deb
+            dist/*.rpm
+
+      - name: Gitee sync skipped notice
+        if: env.HAS_GITEE_TOKEN != 'true'
+        run: echo "::warning::未配置 GITEE_TOKEN，已跳过 Gitee Release 同步。请在仓库 Settings → Secrets and variables → Actions 添加 GITEE_TOKEN（Gitee 个人令牌，需 repo 权限）后重新推送标签或重跑 Release。"
