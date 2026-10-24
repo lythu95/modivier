@@ -5,7 +5,7 @@ import { LANGUAGES, getLocale, setLocale, t } from '../i18n'
 import { closeTabInteractive, closeOtherTabs, newUntitledTab, openViaDialog, saveTab } from '../files'
 import { toggleMode } from '../editors'
 import { toggleOutline } from './outline'
-import { revealInDir } from '../lib/tauri'
+import { invoke, isTauri, revealInDir } from '../lib/tauri'
 import { showAppDialog } from './dialog'
 
 export interface MenuItem {
@@ -164,6 +164,8 @@ export function showAppMenu(anchor: HTMLElement): void {
           action: () => setLocale(l.value),
         })),
       },
+      // 便携单文件场景下方便用户把应用挂进系统“打开方式”列表
+      ...(isTauri ? [{ label: t('menu.associate'), action: registerAssociation }] : []),
       { separator: true },
       { label: t('menu.closeTab'), kbd: 'Ctrl+W', action: onCloseActive },
       { separator: true },
@@ -181,6 +183,25 @@ function onSave(as: boolean): void {
 function onCloseActive(): void {
   const tab = activeTab()
   if (tab) void closeTabInteractive(tab)
+}
+
+async function registerAssociation(): Promise<void> {
+  try {
+    await invoke<void>('register_file_association')
+    await showAppDialog({
+      title: t('dlg.assocTitle'),
+      message: t('dlg.assocOk'),
+      buttons: [{ label: t('dlg.ok'), value: 'ok', kind: 'primary' }],
+      cancelValue: 'ok',
+    })
+  } catch (e) {
+    await showAppDialog({
+      title: t('dlg.assocTitle'),
+      message: String(e),
+      buttons: [{ label: t('dlg.ok'), value: 'ok', kind: 'primary' }],
+      cancelValue: 'ok',
+    })
+  }
 }
 
 function showAbout(): void {

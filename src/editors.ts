@@ -154,6 +154,17 @@ export function activateEditor(tab: Tab): void {
           notify()
         },
         () => {
+          // Vditor 初始化时会规范化文本（CRLF 行尾、行尾空白等）。
+          // 文件标签若用户尚未做实质编辑（内容仍与保存基准一致），
+          // 把规范化结果同步为新的保存基准，避免原样关闭被误报"未保存"
+          if (tab.path && vditorReady(tab) && tab.content === tab.savedContent) {
+            const normalized = tab.vditor!.getValue()
+            if (normalized !== tab.savedContent) {
+              tab.content = normalized
+              tab.savedContent = normalized
+              notify()
+            }
+          }
           if (tab.id === activeId && tab.mode === 'ir') tab.vditor?.focus()
         },
       ),

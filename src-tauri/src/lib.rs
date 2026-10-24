@@ -44,6 +44,88 @@ fn get_launch_args(state: tauri::State<LaunchArgs>) -> Vec<String> {
     state.0.lock().unwrap().clone()
 }
 
+/// 把应用注册到 .md / .markdown 的系统“打开方式”列表（当前用户级，免管理员）。
+/// 便携单文件场景下用户可在文件右键菜单中选择本应用打开。
+#[tauri::command]
+fn register_file_association() -> Result<(), String> {
+    register_file_association_impl()
+}
+
+#[cfg(windows)]
+fn register_file_association_impl() -> Result<(), String> {
+    use winreg::enums::{HKEY_CURRENT_USER, KEY_WRITE};
+    use winreg::RegKey;
+
+    let exe = std::env::current_exe().map_err(|e| format!("无法定位程序：{e}"))?;
+    let exe = exe.to_string_lossy().to_string();
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let classes = hkcu
+        .open_subkey_with_flags("Software\\Classes", KEY_WRITE)
+        .map_err(|e| format!("打开注册表失败：{e}"))?;
+
+    const PROGID: &str = "modivier.md";
+
+    let write = |key: winreg::RegKey, value: &str| -> Result<(), String> {
+        key.set_value("", &value).map_err(|e| format!("写入注册表失败：{e}"))
+    };
+
+    let (progid, _) = classes
+        .create_subkey(PROGID)
+        .map_err(|e| format!("写入注册表失败：{e}"))?;
+    write(progid, "MoDiViEr Markdown Document")?;
+
+    let (icon, _) = classes
+        .create_subkey(format!("{PROGID}\\DefaultIcon"))
+        .map_err(|e| format!("写入注册表失败：{e}"))?;
+    write(icon, &format!("\"{exe}\",0"))?;
+
+    let (open_cmd, _) = classes
+        .create_subkey(format!("{PROGID}\\shell\\open\\command"))
+        .map_err(|e| format!("写入注册表失败：{e}"))?;
+    write(open_cmd, &format!("\"{exe}\" \"%1\""))?;
+
+    for ext in [".md", ".markdown"] {
+        let (ext_key, _) = classes
+            .create_subkey(format!("{ext}\\OpenWithProgids"))
+            .map_err(|e| format!("写入注册表失败：{e}"))?;
+        ext_key
+            .set_value(PROGID, &"")
+            .map_err(|e| format!("写入注册表失败：{e}"))?;
+    }
+
+    // 通知 Shell 关联变化，“打开方式”列表立即刷新
+    shell_notify::assoc_changed();
+    Ok(())
+}
+
+#[cfg(windows)]
+mod shell_notify {
+    #[link(name = "shell32")]
+    extern "system" {
+        fn SHChangeNotify(
+            w_event_id: u32,
+            u_flags: u32,
+            dw_item1: *const core::ffi::c_void,
+            dw_item2: *const core::ffi::c_void,
+        );
+    }
+
+    const SHCNE_ASSOCCHANGED: u32 = 0x0800_0000;
+    const SHCNF_IDLIST: u32 = 0x0000;
+
+    pub fn assoc_changed() {
+        unsafe {
+            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, std::ptr::null(), std::ptr::null());
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn register_file_association_impl() -> Result<(), String> {
+    Err("当前平台不支持".into())
+}
+
 /// 过滤掉可执行文件路径与开关参数，只保留可能是文件的参数。
 fn extract_file_args(args: &[String]) -> Vec<String> {
     args.iter()
@@ -70,7 +152,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(LaunchArgs(Mutex::new(launch_args)))
-        .invoke_handler(tauri::generate_handler![read_file, write_file, get_launch_args])
+        .invoke_handler(tauri::generate_handler![
+            read_file,
+            write_file,
+            get_launch_args,
+            register_file_association
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
