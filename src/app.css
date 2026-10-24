@@ -2,7 +2,6 @@
 :root {
   --sans-font: "Segoe UI", "Microsoft YaHei", "PingFang SC", -apple-system, sans-serif;
   --mono-font: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
-  --content-width: 860px;
 }
 
 :root[data-theme='light'] {
@@ -69,6 +68,7 @@ button {
 #app {
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 /* ========== 标题栏 ========== */
@@ -251,6 +251,7 @@ button {
 
 /* ========== 大纲侧栏 ========== */
 #sidebar {
+  position: relative;
   flex: none;
   /* flex item 的自动最小尺寸会顶住内容宽度，必须显式归零才能收到 0 */
   min-width: 0;
@@ -261,6 +262,11 @@ button {
   transition:
     width 0.18s ease,
     border-color 0.18s ease;
+}
+
+/* 拖拽调宽时禁用过渡，跟手 */
+#sidebar.resizing {
+  transition: none;
 }
 
 /* 收起后完全让位给内容区，只剩左缘悬浮箭头 */
@@ -280,21 +286,23 @@ button {
   visibility: hidden;
 }
 
-#outline-collapse {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  color: var(--fg-muted);
+/* 右缘拖拽把手：平时隐形，hover 出现细线 */
+#sidebar-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 10;
 }
 
-#outline-collapse:hover {
-  background: var(--tab-hover-bg);
-  color: var(--fg);
+#sidebar-resize:hover {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-/* 收起态的展开热区：贴左缘、全高、窄条，箭头垂直居中且半透明 */
+/* 左缘开合箭头：贴边、全高、窄热区，方向随开合旋转 180° */
 #outline-opener {
   position: absolute;
   left: 0;
@@ -310,7 +318,14 @@ button {
 
 #outline-opener svg {
   opacity: 0.35;
-  transition: opacity 0.15s ease;
+  transform: rotate(0deg);
+  transition:
+    opacity 0.15s ease,
+    transform 0.18s ease;
+}
+
+#outline-opener.sidebar-open svg {
+  transform: rotate(180deg);
 }
 
 #outline-opener:hover {
@@ -328,8 +343,7 @@ button {
 #sidebar-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 9px 8px 7px 14px;
+  padding: 9px 8px 7px 18px;
   flex: none;
   user-select: none;
 }
@@ -345,7 +359,8 @@ button {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 2px 8px 24px;
+  /* 左侧留出悬浮箭头热区的空间 */
+  padding: 2px 8px 24px 18px;
   user-select: none;
 }
 
@@ -436,12 +451,13 @@ button {
 }
 
 /* Typora 式居中排版：
-   滚动容器铺满整个内容区，两侧用对称 padding 收出中间列，
-   这样内容区任意位置滚轮/翻页都作用于文档（VSCode 风格） */
+   滚动容器铺满整个内容区，两侧留白按比例计算——
+   窗口小则留白小（下限 56px），窗口越大内容列越宽，
+   留白占比封顶（10% 且不超过 220px），超宽窗口下内容继续变宽 */
 .vd-host .vditor-reset {
   max-width: none !important;
   margin: 0 !important;
-  padding: 26px max(calc((100% - var(--content-width)) / 2), 56px) 30vh !important;
+  padding: 26px max(56px, min(10%, 220px)) 30vh !important;
   font-family: var(--sans-font) !important;
   line-height: 1.65 !important;
   color: var(--fg) !important;
@@ -479,7 +495,7 @@ button {
 .cm-host .cm-content {
   max-width: none;
   margin: 0;
-  padding: 18px max(calc((100% - (var(--content-width) + 200px)) / 2), 56px) 30vh !important;
+  padding: 18px max(56px, min(10%, 220px)) 30vh !important;
 }
 
 .cm-host .cm-gutters {
@@ -728,16 +744,22 @@ kbd {
   background: var(--border);
 }
 
-/* ========== 状态栏（透明悬浮，胶囊信息点） ========== */
+/* ========== 状态栏（悬浮透明层，内容延伸到底） ========== */
 #statusbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  z-index: 500;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 26px;
-  flex: none;
   font-size: 11.5px;
   color: var(--fg-muted);
   user-select: none;
+  /* 空白区域穿透点击到底下的编辑区 */
+  pointer-events: none;
 }
 
 .sb-left {
@@ -771,8 +793,9 @@ kbd {
   padding-right: 16px;
 }
 
-/* 可点击项：主题色胶囊 */
+/* 可点击项：主题色胶囊（悬浮层中仅按钮接收鼠标） */
 .sb-right button {
+  pointer-events: auto;
   display: flex;
   align-items: center;
   padding: 2px 10px;

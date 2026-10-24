@@ -47,7 +47,7 @@ export function setupStatusbar(bar: HTMLElement): void {
   }
 
   const render = () => {
-    themeBtn.textContent = getTheme() === 'dark' ? 'Dark' : 'Light'
+    themeBtn.textContent = getTheme() === 'dark' ? t('sb.dark') : t('sb.light')
     const tab = activeTab()
     modeBtn.style.display = tab ? '' : 'none'
     if (tab) modeBtn.textContent = t(tab.mode === 'ir' ? 'sb.markdown' : 'sb.source')

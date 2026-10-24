@@ -63,12 +63,10 @@ const TEMPLATE = `
       <div id="sidebar-panel">
         <div id="sidebar-header">
           <span id="outline-title"></span>
-          <button id="outline-collapse" title="">
-            <svg viewBox="0 0 10 10" width="10" height="10"><path d="M7 1L3 5l4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-          </button>
         </div>
         <div id="outline-tree"></div>
       </div>
+      <div id="sidebar-resize"></div>
     </div>
     <button id="outline-opener" title="">
       <svg viewBox="0 0 10 10" width="11" height="11"><path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
