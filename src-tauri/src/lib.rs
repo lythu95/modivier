@@ -181,6 +181,35 @@ pub fn run() {
             get_launch_args,
             register_file_association
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // macOS 上"双击文件 / 右键打开方式"经 LaunchServices 以 Apple Event (odoc)
+            // 投递，不走 argv（RunEvent::Opened 仅在 Apple 平台编译）。
+            // 事件可能早于 webview 就绪：除转发事件外并入启动参数缓存，
+            // 前端启动时会经 get_launch_args 再拉取一次（前端按路径去重，不会重复开标签）。
+            #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+            if let tauri::RunEvent::Opened { urls } = event {
+                let paths: Vec<String> = urls
+                    .iter()
+                    .filter_map(|u| u.to_file_path().ok())
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .collect();
+                if !paths.is_empty() {
+                    app.state::<LaunchArgs>()
+                        .0
+                        .lock()
+                        .unwrap()
+                        .extend(paths.iter().cloned());
+                    if let Some(win) = app.get_webview_window("main") {
+                        let _ = win.set_focus();
+                    }
+                    let _ = app.emit("open-files", paths);
+                }
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+            {
+                let _ = (app, event);
+            }
+        });
 }

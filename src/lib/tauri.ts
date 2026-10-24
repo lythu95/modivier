@@ -8,6 +8,16 @@ import type { OpenDialogOptions, SaveDialogOptions } from '@tauri-apps/plugin-di
 export const isTauri: boolean =
   typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
+export type DesktopPlatform = 'windows' | 'macos' | 'linux'
+
+/** 桌面平台，按 UA 推断（webview 内即真实系统；浏览器调试下同样可用） */
+export function desktopPlatform(): DesktopPlatform {
+  const ua = navigator.userAgent
+  if (/Windows/i.test(ua)) return 'windows'
+  if (/Macintosh|Mac OS X/i.test(ua)) return 'macos'
+  return 'linux'
+}
+
 export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const { invoke } = await import('@tauri-apps/api/core')
   return invoke<T>(cmd, args)

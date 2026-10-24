@@ -6,7 +6,7 @@ import { closeTabInteractive, closeOtherTabs, newUntitledTab, openViaDialog, sav
 import { toggleMode } from '../editors'
 import { toggleOutline } from './outline'
 import { pickSourceFont } from '../font-setting'
-import { invoke, isTauri, revealInDir } from '../lib/tauri'
+import { invoke, desktopPlatform, isTauri, revealInDir } from '../lib/tauri'
 import { showAppDialog } from './dialog'
 
 export interface MenuItem {
@@ -172,8 +172,11 @@ export function showAppMenu(anchor: HTMLElement): void {
           action: () => setLocale(l.value),
         })),
       },
-      // 便携单文件场景下方便用户把应用挂进系统“打开方式”列表
-      ...(isTauri ? [{ label: t('menu.associate'), action: registerAssociation }] : []),
+      // 运行时注册“打开方式”仅 Windows 有意义（写注册表，便携单文件场景）；
+      // macOS / Linux 由安装包完成：Info.plist（CFBundleDocumentTypes）/ deb·rpm 的 desktop 项
+      ...(isTauri && desktopPlatform() === 'windows'
+        ? [{ label: t('menu.associate'), action: registerAssociation }]
+        : []),
       { separator: true },
       { label: t('menu.about', { name: APP_NAME }), action: showAbout },
     ],
