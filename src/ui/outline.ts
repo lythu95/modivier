@@ -76,7 +76,12 @@ export function toggleOutline(): void {
 
 function applySidebar(): void {
   if (!sidebarEl) return
+  const hasTabs = tabs.length > 0
+  sidebarEl.style.display = hasTabs ? '' : 'none'
   sidebarEl.classList.toggle('collapsed', !open)
+  // 收起后只在整个内容区左缘悬浮一个半透明箭头
+  const opener = document.getElementById('outline-opener')
+  if (opener) opener.style.display = hasTabs && !open ? 'flex' : 'none'
 }
 
 /* ---------------- 树渲染 ---------------- */
@@ -171,17 +176,20 @@ export function setupOutline(sidebar: HTMLElement, tree: HTMLElement): void {
   treeEl = tree
 
   sidebar.querySelector('#outline-collapse')?.addEventListener('click', () => setOutlineOpen(false))
-  sidebar.querySelector('#outline-expand')?.addEventListener('click', () => setOutlineOpen(true))
-  sidebar.querySelector('#outline-title')!.textContent = t('menu.outline')
-  onLocaleChange(() => {
+  document.getElementById('outline-opener')?.addEventListener('click', () => setOutlineOpen(true))
+  const applyTitle = () => {
     sidebar.querySelector('#outline-title')!.textContent = t('menu.outline')
+    document.getElementById('outline-opener')?.setAttribute('title', t('menu.outline'))
+  }
+  applyTitle()
+  onLocaleChange(() => {
+    applyTitle()
     renderTree()
   })
 
   applySidebar()
   subscribe(() => {
-    // 无标签时整个侧栏隐藏（欢迎页居中）
-    sidebar.style.display = tabs.length > 0 ? '' : 'none'
+    applySidebar()
     scheduleRebuild()
   })
   renderTree()

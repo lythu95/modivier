@@ -69,12 +69,10 @@ const TEMPLATE = `
         </div>
         <div id="outline-tree"></div>
       </div>
-      <div id="sidebar-rail">
-        <button id="outline-expand" title="">
-          <svg viewBox="0 0 10 10" width="10" height="10"><path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        </button>
-      </div>
     </div>
+    <button id="outline-opener" title="">
+      <svg viewBox="0 0 10 10" width="11" height="11"><path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
     <div id="main-area">
       <div id="editors"></div>
       <div id="welcome"></div>
