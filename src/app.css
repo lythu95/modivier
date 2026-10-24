@@ -1,7 +1,10 @@
 /* ========== 设计变量（参考 Typora 的干净排版） ========== */
 :root {
   --sans-font: "Segoe UI", "Microsoft YaHei", "PingFang SC", -apple-system, sans-serif;
-  --mono-font: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  /* 英文走 Consolas / Courier New，中文回退微软雅黑 */
+  --mono-font: Consolas, "Courier New", "Microsoft YaHei", monospace;
+  /* 源码模式字体（用户可在菜单中更换，见 font-setting.ts） */
+  --source-font: var(--mono-font);
 }
 
 :root[data-theme='light'] {
@@ -488,7 +491,7 @@ button {
 }
 
 .cm-host .cm-scroller {
-  font-family: var(--mono-font);
+  font-family: var(--source-font);
   line-height: 1.65;
 }
 
@@ -893,6 +896,52 @@ kbd {
 .btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+/* 列表选择对话框（字体选择等） */
+.dialog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px -6px 0;
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 300px;
+}
+
+.choice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.choice-row:hover {
+  background: var(--menu-hover);
+}
+
+.choice-check {
+  width: 14px;
+  flex: none;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.choice-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.choice-sample {
+  color: var(--fg-muted);
+  font-size: 12px;
+  flex: none;
 }
 
 /* ========== 滚动条 ========== */

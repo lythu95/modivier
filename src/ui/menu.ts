@@ -5,6 +5,7 @@ import { LANGUAGES, getLocale, setLocale, t } from '../i18n'
 import { closeTabInteractive, closeOtherTabs, newUntitledTab, openViaDialog, saveTab } from '../files'
 import { toggleMode } from '../editors'
 import { toggleOutline } from './outline'
+import { pickSourceFont } from '../font-setting'
 import { invoke, isTauri, revealInDir } from '../lib/tauri'
 import { showAppDialog } from './dialog'
 
@@ -130,18 +131,23 @@ export function showMenu(
   window.addEventListener('keydown', onEsc, true)
 }
 
-/** 左上角主菜单 */
+/** 左上角主菜单：文件 → 关闭 → 视图 → 偏好设置 → 关于 */
 export function showAppMenu(anchor: HTMLElement): void {
   const rect = anchor.getBoundingClientRect()
   showMenu(
     rect.left,
     rect.bottom + 4,
     [
+      // 文件操作
       { label: t('menu.open'), kbd: 'Ctrl+O', action: openViaDialog },
       { label: t('menu.newFile'), kbd: 'Ctrl+N', action: newUntitledTab },
       { separator: true },
       { label: t('menu.save'), kbd: 'Ctrl+S', action: () => onSave(false) },
       { label: t('menu.saveAs'), kbd: 'Ctrl+Shift+S', action: () => onSave(true) },
+      { separator: true },
+      { label: t('menu.closeTab'), kbd: 'Ctrl+W', action: onCloseActive },
+      { separator: true },
+      // 视图
       {
         label: t('menu.toggleMode'),
         kbd: 'Ctrl+/',
@@ -151,11 +157,13 @@ export function showAppMenu(anchor: HTMLElement): void {
         },
       },
       { label: t('menu.outline'), kbd: 'Ctrl+Shift+O', action: toggleOutline },
-      { separator: true },
       {
         label: getTheme() === 'dark' ? t('menu.themeLight') : t('menu.themeDark'),
         action: toggleTheme,
       },
+      { separator: true },
+      // 偏好设置
+      { label: t('menu.font'), action: () => void pickSourceFont() },
       {
         label: t('menu.language'),
         children: LANGUAGES.map((l) => ({
@@ -166,8 +174,6 @@ export function showAppMenu(anchor: HTMLElement): void {
       },
       // 便携单文件场景下方便用户把应用挂进系统“打开方式”列表
       ...(isTauri ? [{ label: t('menu.associate'), action: registerAssociation }] : []),
-      { separator: true },
-      { label: t('menu.closeTab'), kbd: 'Ctrl+W', action: onCloseActive },
       { separator: true },
       { label: t('menu.about', { name: APP_NAME }), action: showAbout },
     ],

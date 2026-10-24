@@ -82,7 +82,7 @@ const cmLightTheme = EditorView.theme({
     fontSize: '15px',
   },
   '.cm-content': {
-    fontFamily: 'var(--mono-font)',
+    fontFamily: 'var(--source-font)',
     padding: '18px 4px 30vh',
     caretColor: 'var(--accent)',
     lineHeight: '1.65',

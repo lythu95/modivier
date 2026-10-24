@@ -4,6 +4,7 @@ import 'vditor/dist/index.css'
 import { APP_NAME, APP_TAGLINE, APP_VERSION } from './app-info'
 import { apply as applyTheme } from './theme'
 import { initLocale, onLocaleChange, t } from './i18n'
+import { applySourceFont } from './font-setting'
 import {
   activeTab,
   anyUnsavedChanges,
@@ -102,6 +103,7 @@ function renderWelcome(welcome: HTMLElement): void {
 async function main(): Promise<void> {
   initLocale()
   applyTheme()
+  applySourceFont()
 
   const app = document.getElementById('app')!
   app.innerHTML = TEMPLATE
