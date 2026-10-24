@@ -141,7 +141,7 @@ jobs:
           draft: 'false'
           prerelease: ${{ contains(github.ref_name, '-') && 'true' || 'false' }}
           gitee-token: ${{ secrets.GITEE_TOKEN }}
-          gitee-owner: 'lythu95'
+          gitee-owner: 'lythu'
           gitee-repo: 'modivier'
           gitee-target-commitish: 'main'
           asset-files: |

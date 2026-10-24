@@ -138,4 +138,4 @@ npx tauri icon src-tauri/icons-src/app-icon.png
 
 ## 回饋
 
-使用中遇到問題或有建議，歡迎在 [GitHub Issues](https://github.com/lythu95/modivier/issues) 或 [Gitee Issues](https://gitee.com/lythu95/modivier/issues) 提出。
+使用中遇到問題或有建議，歡迎在 [GitHub Issues](https://github.com/lythu95/modivier/issues) 或 [Gitee Issues](https://gitee.com/lythu/modivier/issues) 提出。

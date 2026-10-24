@@ -138,4 +138,4 @@ This project is released under the [MIT License](./LICENSE).
 
 ## Feedback
 
-Found a bug or have a suggestion? Open an issue on [GitHub](https://github.com/lythu95/modivier/issues) or [Gitee](https://gitee.com/lythu95/modivier/issues).
+Found a bug or have a suggestion? Open an issue on [GitHub](https://github.com/lythu95/modivier/issues) or [Gitee](https://gitee.com/lythu/modivier/issues).
