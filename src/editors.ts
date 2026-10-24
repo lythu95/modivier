@@ -184,6 +184,10 @@ export function activateEditor(tab: Tab): void {
   }
   tab.vdHost.style.display = wantSource ? 'none' : ''
   tab.cmHost.style.display = wantSource ? '' : 'none'
+  if (!wantSource && vditorReady(tab) && tab.vditor!.getValue() !== tab.content) {
+    // 在源码模式修改过内容，回 Markdown 模式时同步给 Vditor（清空撤销栈避免跨模式混乱）
+    tab.vditor!.setValue(tab.content, true)
+  }
   focusActiveEditor()
   emitCursor()
 }

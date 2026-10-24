@@ -216,9 +216,15 @@ button {
 
 /* ========== 内容区 ========== */
 #content {
-  position: relative;
+  display: flex;
   flex: 1;
   min-height: 0;
+}
+
+#main-area {
+  position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
 #editors {
@@ -238,6 +244,158 @@ button {
 
 .tab-editor.active {
   display: block;
+  animation: fade-in 0.18s ease-out;
+}
+
+/* ========== 大纲侧栏 ========== */
+#sidebar {
+  flex: none;
+  /* flex item 的自动最小尺寸会顶住内容宽度，必须显式归零才能收到 26px */
+  min-width: 0;
+  width: 232px;
+  background: var(--titlebar-bg);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  transition: width 0.18s ease;
+}
+
+#sidebar.collapsed {
+  width: 26px;
+}
+
+#sidebar-panel {
+  width: 232px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#sidebar.collapsed #sidebar-panel {
+  display: none;
+}
+
+#sidebar-rail {
+  display: none;
+  width: 26px;
+}
+
+#sidebar.collapsed #sidebar-rail {
+  display: block;
+}
+
+#sidebar-rail button,
+#outline-collapse {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--fg-muted);
+}
+
+#sidebar-rail button {
+  margin: 8px 2px;
+}
+
+#sidebar-rail button:hover,
+#outline-collapse:hover {
+  background: var(--tab-hover-bg);
+  color: var(--fg);
+}
+
+#sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 8px 7px 14px;
+  flex: none;
+  user-select: none;
+}
+
+#outline-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--fg-muted);
+}
+
+#outline-tree {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 8px 24px;
+  user-select: none;
+}
+
+#outline-tree,
+.outline-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.outline-children {
+  padding-left: 15px;
+}
+
+.outline-children.hidden {
+  display: none;
+}
+
+.outline-item {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.outline-item:hover {
+  background: var(--tab-hover-bg);
+}
+
+.outline-caret {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  color: var(--fg-muted);
+  border-radius: 4px;
+}
+
+.outline-caret:not(.leaf):hover {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+
+.outline-caret.leaf {
+  visibility: hidden;
+}
+
+.outline-caret svg {
+  transition: transform 0.15s ease;
+  /* 折叠时朝右，展开时旋转向下 */
+  transform: rotate(0deg);
+}
+
+.outline-caret.expanded svg {
+  transform: rotate(90deg);
+}
+
+.outline-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--fg-muted);
+  cursor: default;
+  padding: 2px 2px 2px 0;
+}
+
+.outline-item:hover .outline-text {
+  color: var(--fg);
 }
 
 /* ========== Vditor（所见即所得） ========== */
@@ -255,11 +413,13 @@ button {
   display: none !important;
 }
 
-/* Typora 式居中排版 */
+/* Typora 式居中排版：
+   滚动容器铺满整个内容区，两侧用对称 padding 收出中间列，
+   这样内容区任意位置滚轮/翻页都作用于文档（VSCode 风格） */
 .vd-host .vditor-reset {
-  max-width: var(--content-width);
-  margin: 0 auto !important;
-  padding: 26px 36px 30vh !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 26px max(calc((100% - var(--content-width)) / 2), 56px) 30vh !important;
   font-family: var(--sans-font) !important;
   line-height: 1.65 !important;
   color: var(--fg) !important;
@@ -295,9 +455,9 @@ button {
 }
 
 .cm-host .cm-content {
-  padding: 18px 28px 30vh !important;
-  max-width: calc(var(--content-width) + 200px);
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
+  padding: 18px max(calc((100% - (var(--content-width) + 200px)) / 2), 56px) 30vh !important;
 }
 
 .cm-host .cm-gutters {

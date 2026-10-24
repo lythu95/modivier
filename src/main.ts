@@ -26,6 +26,7 @@ import { setupTabsBar } from './ui/tabs'
 import { setupTitlebar } from './ui/titlebar'
 import { setupStatusbar } from './ui/statusbar'
 import { isDialogOpen, showAppDialog } from './ui/dialog'
+import { setupOutline, toggleOutline } from './ui/outline'
 import {
   invoke,
   isTauri,
@@ -58,8 +59,26 @@ const TEMPLATE = `
     </div>
   </header>
   <main id="content">
-    <div id="editors"></div>
-    <div id="welcome"></div>
+    <div id="sidebar">
+      <div id="sidebar-panel">
+        <div id="sidebar-header">
+          <span id="outline-title"></span>
+          <button id="outline-collapse" title="">
+            <svg viewBox="0 0 10 10" width="10" height="10"><path d="M7 1L3 5l4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div id="outline-tree"></div>
+      </div>
+      <div id="sidebar-rail">
+        <button id="outline-expand" title="">
+          <svg viewBox="0 0 10 10" width="10" height="10"><path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="main-area">
+      <div id="editors"></div>
+      <div id="welcome"></div>
+    </div>
   </main>
   <footer id="statusbar"></footer>
 `
@@ -97,10 +116,13 @@ async function main(): Promise<void> {
   const welcome = document.getElementById('welcome')!
   const statusbar = document.getElementById('statusbar')!
   const newTabBtn = document.getElementById('new-tab-btn')!
+  const sidebar = document.getElementById('sidebar')!
+  const outlineTree = document.getElementById('outline-tree')!
 
   await setupTitlebar(titlebar)
   setupTabsBar(tabsBar)
   setupStatusbar(statusbar)
+  setupOutline(sidebar, outlineTree)
   initFileActions(editors)
 
   renderWelcome(welcome)
@@ -184,7 +206,11 @@ function setupShortcuts(): void {
       if (!e.ctrlKey && !e.metaKey) return
       const key = e.key.toLowerCase()
 
-      if (key === 'o') {
+      if (key === 'o' && e.shiftKey) {
+        // Ctrl+Shift+O 大纲
+        e.preventDefault()
+        toggleOutline()
+      } else if (key === 'o') {
         e.preventDefault()
         void openViaDialog()
       } else if (key === 'n' || key === 't') {

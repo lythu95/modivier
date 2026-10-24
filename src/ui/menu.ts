@@ -4,6 +4,7 @@ import { APP_NAME, APP_TAGLINE, APP_VERSION } from '../app-info'
 import { LANGUAGES, getLocale, setLocale, t } from '../i18n'
 import { closeTabInteractive, closeOtherTabs, newUntitledTab, openViaDialog, saveTab } from '../files'
 import { toggleMode } from '../editors'
+import { toggleOutline } from './outline'
 import { revealInDir } from '../lib/tauri'
 import { showAppDialog } from './dialog'
 
@@ -149,6 +150,7 @@ export function showAppMenu(anchor: HTMLElement): void {
           if (tab) toggleMode(tab)
         },
       },
+      { label: t('menu.outline'), kbd: 'Ctrl+Shift+O', action: toggleOutline },
       { separator: true },
       {
         label: getTheme() === 'dark' ? t('menu.themeLight') : t('menu.themeDark'),
