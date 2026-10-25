@@ -63,9 +63,9 @@
 
 各平台安裝包均可從 [Releases](../../releases) 頁面取得。
 
-**Windows**：下載 `MoDiViEr_x.y.z_x64-setup.exe`（約 5MB 的 NSIS 安裝包），安裝後自動註冊 `.md` / `.markdown` 檔案關聯，在檔案總管雙擊即可開啟。`npm run tauri build` 的產物 `src-tauri/target/release/modivier.exe` 本身就是免安裝的便攜單檔，可在選單裡點「關聯 .md 檔案」註冊到系統「開啟方式」列表（目前使用者層級、免系統管理員）。Windows 10 / 11 內建 WebView2，無需額外安裝執行環境。
+**Windows**：下載 `MoDiViEr_x.y.z_x64-setup.exe`（約 5MB 的 NSIS 安裝包），安裝後自動註冊 `.md` / `.markdown` 檔案關聯，在檔案總管雙擊即可開啟；免安裝可直接下載 `MoDiViEr_x.y.z_x64_portable.exe` 便攜單檔，在選單裡點「關聯 .md 檔案」註冊到系統「開啟方式」列表（目前使用者層級、免系統管理員）。Windows 10 / 11 內建 WebView2，無需額外安裝執行環境。
 
-**macOS**（Apple Silicon）：下載 `MoDiViEr_x.y.z_aarch64.dmg`，將 MoDiViEr.app 拖入「應用程式」並啟動一次；之後在 `.md` 檔案上右鍵 → 開啟方式 選擇 MoDiViEr，或在「顯示簡介」（⌘I）→ 開啟方式 → 「全部更改…」設為預設，雙擊即可開啟（已執行時在現有視窗開新分頁）。安裝包未簽署：首次開啟若被 Gatekeeper 攔截，右鍵 → 開啟 即可。
+**macOS**（Intel / Apple Silicon 通用）：下載 `MoDiViEr_x.y.z_universal.dmg`，將 MoDiViEr.app 拖入「應用程式」並啟動一次；之後在 `.md` 檔案上右鍵 → 開啟方式 選擇 MoDiViEr，或在「顯示簡介」（⌘I）→ 開啟方式 → 「全部更改…」設為預設，雙擊即可開啟（已執行時在現有視窗開新分頁）。安裝包未簽署：首次開啟若被 Gatekeeper 攔截，右鍵 → 開啟 即可。
 
 **Linux**：`npm run tauri build` 產出 deb / rpm 包（已註冊 Markdown MIME 關聯）；如需 AppImage 可用 `npx tauri build --bundles appimage` 追加。
 

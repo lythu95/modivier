@@ -63,9 +63,9 @@ Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, si
 
 Installers for all platforms are available on the [Releases](../../releases) page.
 
-**Windows**: grab `MoDiViEr_x.y.z_x64-setup.exe` (a ~5 MB NSIS installer). It registers `.md` / `.markdown` associations, so double-clicking a Markdown file opens it right away. The output of `npm run tauri build`, `src-tauri/target/release/modivier.exe`, is itself a portable single file — the menu item "Associate .md files" registers it with the system's "Open with" list (per-user, no admin needed). Windows 10 / 11 ships WebView2 — no extra runtime required.
+**Windows**: grab `MoDiViEr_x.y.z_x64-setup.exe` (a ~5 MB NSIS installer) — it registers `.md` / `.markdown` associations, so double-clicking a Markdown file opens it right away. For a portable setup, download `MoDiViEr_x.y.z_x64_portable.exe` (single file, no install) and use the menu item "Associate .md files" to register it with the system's "Open with" list (per-user, no admin needed). Windows 10 / 11 ships WebView2 — no extra runtime required.
 
-**macOS** (Apple Silicon): download `MoDiViEr_x.y.z_aarch64.dmg`, drag MoDiViEr.app into Applications and launch it once; then right-click a `.md` file → Open With → MoDiViEr, or set it as the default via Get Info (⌘I) → "Open with" → "Change All…". Double-clicking now opens the file directly (a second file opens as a new tab in the running window). The bundle is unsigned: if Gatekeeper blocks the first launch, right-click → Open.
+**macOS** (Intel & Apple Silicon universal): download `MoDiViEr_x.y.z_universal.dmg`, drag MoDiViEr.app into Applications and launch it once; then right-click a `.md` file → Open With → MoDiViEr, or set it as the default via Get Info (⌘I) → "Open with" → "Change All…". Double-clicking now opens the file directly (a second file opens as a new tab in the running window). The bundle is unsigned: if Gatekeeper blocks the first launch, right-click → Open.
 
 **Linux**: `npm run tauri build` produces deb / rpm packages (Markdown MIME associations included); build an AppImage on demand with `npx tauri build --bundles appimage`.
 
