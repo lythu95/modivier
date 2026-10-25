@@ -127,6 +127,21 @@ jobs:
             dist/*.deb
             dist/*.rpm
 
+      # release-sync 的 Gitee 路径对已有 Release 不幂等，重跑前先删同 tag 旧 Release（tag 保留）
+      - name: Remove existing Gitee release for tag
+        if: env.HAS_GITEE_TOKEN == 'true'
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          RID=$(curl -s "https://gitee.com/api/v5/repos/lythu/modivier/releases/tags/${{ github.ref_name }}?access_token=$GITEE_TOKEN" \
+            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).id||'')}catch(e){console.log('')}})")
+          if [ -n "$RID" ]; then
+            curl -s -X DELETE "https://gitee.com/api/v5/repos/lythu/modivier/releases/$RID?access_token=$GITEE_TOKEN"
+            echo "Deleted existing Gitee release $RID"
+          else
+            echo "No existing Gitee release for tag"
+          fi
+
       - name: Sync Release to Gitee
         if: env.HAS_GITEE_TOKEN == 'true'
         uses: YuZhiYuanOrg/release-sync@v1
