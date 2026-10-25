@@ -33,15 +33,16 @@ jobs:
           - platform: windows-latest
             args: ''
             rust-targets: ''
-            artifact-name: windows-installer
+            artifact-name: windows-packages
             artifact-path: |
               src-tauri/target/release/bundle/nsis/*.exe
+              bundles/*.exe
     runs-on: ${{ matrix.settings.platform }}
     permissions:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
@@ -50,7 +51,7 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -71,12 +72,20 @@ jobs:
       - name: Build Tauri bundles
         run: npm run tauri build -- ${{ matrix.settings.args }}
 
+      - name: Stage portable executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bundles | Out-Null
+          $version = "${{ github.ref_name }}" -replace '^v',''
+          Copy-Item "src-tauri/target/release/modivier.exe" ("bundles/MoDiViEr_{0}_x64_portable.exe" -f $version)
+
       - name: List bundle outputs
         if: runner.os == 'Linux'
         run: ls -laR src-tauri/target/release/bundle/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.settings.artifact-name }}
           path: ${{ matrix.settings.artifact-path }}
@@ -92,10 +101,10 @@ jobs:
       HAS_GITEE_TOKEN: ${{ secrets.GITEE_TOKEN != '' }}
     steps:
       - name: Checkout (need tag object for pushing to Gitee)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -111,7 +120,7 @@ jobs:
       # GitHub 侧用 softprops（按 tag 复用/更新 Release，重跑幂等）；
       # release-sync 的 GitHub 路径对已存在的 Release 会报 422，只保留其 Gitee 同步
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -122,7 +131,7 @@ jobs:
 
             | 平台 | 安装包 |
             | --- | --- |
-            | Windows | `MoDiViEr_*_x64-setup.exe`（NSIS 安装包，注册 .md 文件关联） |
+            | Windows | `MoDiViEr_*_x64-setup.exe`（安装包）/ `MoDiViEr_*_x64_portable.exe`（便携单文件，免安装） |
             | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
             | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
 
@@ -144,7 +153,7 @@ jobs:
 
             | 平台 | 安装包 |
             | --- | --- |
-            | Windows | `MoDiViEr_*_x64-setup.exe`（NSIS 安装包，注册 .md 文件关联） |
+            | Windows | `MoDiViEr_*_x64-setup.exe`（安装包）/ `MoDiViEr_*_x64_portable.exe`（便携单文件，免安装） |
             | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
             | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
 
