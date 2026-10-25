@@ -52,7 +52,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Setup Rust
@@ -70,6 +70,10 @@ jobs:
 
       - name: Build Tauri bundles
         run: npm run tauri build -- ${{ matrix.settings.args }}
+
+      - name: List bundle outputs
+        if: runner.os == 'Linux'
+        run: ls -laR src-tauri/target/release/bundle/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -117,59 +121,51 @@ jobs:
             | --- | --- |
             | Windows | `MoDiViEr_*_x64-setup.exe`（NSIS 安装包，注册 .md 文件关联） |
             | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
-            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
+            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu） |
 
             > macOS 安装包未签名，首次打开需右键 → 打开。
           prerelease: ${{ contains(github.ref_name, '-') }}
-          files: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.deb
-            dist/*.rpm
+          files: dist/*
 
-      # release-sync 的 Gitee 路径对已有 Release 不幂等，重跑前先删同 tag 旧 Release（tag 保留）
-      - name: Remove existing Gitee release for tag
+      # Gitee 官方 API 实现（release-sync 对已有 Release 不幂等且重建 tag 报 400）：
+      # 删同 tag 旧 Release（Gitee 会级联删其自动创建的 tag）→ 建 Release（tag 不存在时按 main 自动重建）→ 上传 dist 下全部产物
+      - name: Sync Release to Gitee
         if: env.HAS_GITEE_TOKEN == 'true'
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-        run: |
-          RID=$(curl -s "https://gitee.com/api/v5/repos/lythu/modivier/releases/tags/${{ github.ref_name }}?access_token=$GITEE_TOKEN" \
-            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).id||'')}catch(e){console.log('')}})")
-          if [ -n "$RID" ]; then
-            curl -s -X DELETE "https://gitee.com/api/v5/repos/lythu/modivier/releases/$RID?access_token=$GITEE_TOKEN"
-            echo "Deleted existing Gitee release $RID"
-          else
-            echo "No existing Gitee release for tag"
-          fi
-
-      - name: Sync Release to Gitee
-        if: env.HAS_GITEE_TOKEN == 'true'
-        uses: YuZhiYuanOrg/release-sync@v1
-        with:
-          platforms: 'gitee'
-          tag: ${{ github.ref_name }}
-          release-name: 'MoDiViEr ${{ github.ref_name }}'
-          release-body: |
+          GITEE_TAG: ${{ github.ref_name }}
+          GITEE_PRERELEASE: ${{ contains(github.ref_name, '-') }}
+          GITEE_BODY: |
             **MoDiViEr —— MarkDown Viewer and Editor**
 
             | 平台 | 安装包 |
             | --- | --- |
             | Windows | `MoDiViEr_*_x64-setup.exe`（NSIS 安装包，注册 .md 文件关联） |
             | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
-            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
+            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu） |
 
             > macOS 安装包未签名，首次打开需右键 → 打开。
-          draft: 'false'
-          prerelease: ${{ contains(github.ref_name, '-') && 'true' || 'false' }}
-          gitee-token: ${{ secrets.GITEE_TOKEN }}
-          gitee-owner: 'lythu'
-          gitee-repo: 'modivier'
-          gitee-target-commitish: 'main'
-          asset-files: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.deb
-            dist/*.rpm
+        run: |
+          set -e
+          API="https://gitee.com/api/v5/repos/lythu/modivier"
+          get_id () { node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).id||'')}catch(e){console.log('')}})"; }
+
+          RID=$(curl -s "$API/releases/tags/$GITEE_TAG?access_token=$GITEE_TOKEN" | get_id)
+          if [ -n "$RID" ]; then
+            echo "Deleting existing Gitee release $RID"
+            curl -sf -X DELETE "$API/releases/$RID?access_token=$GITEE_TOKEN"
+          fi
+
+          PAYLOAD=$(node -e "console.log(JSON.stringify({access_token:process.env.GITEE_TOKEN,tag_name:process.env.GITEE_TAG,name:'MoDiViEr '+process.env.GITEE_TAG,body:process.env.GITEE_BODY,prerelease:process.env.GITEE_PRERELEASE==='true',target_commitish:'main'}))")
+          RID=$(echo "$PAYLOAD" | curl -sf -X POST "$API/releases" -H "Content-Type: application/json" -d @- | get_id)
+          [ -n "$RID" ] || { echo "Gitee release creation failed"; exit 1; }
+          echo "Gitee release id: $RID"
+
+          for f in dist/*; do
+            echo "Uploading $(basename "$f")"
+            curl -sf -X POST "$API/releases/$RID/attach_files" -F "access_token=$GITEE_TOKEN" -F "attachment=@$f" > /dev/null
+          done
+          echo "Gitee release synced: https://gitee.com/lythu/modivier/releases/tag/$GITEE_TAG"
 
       - name: Gitee sync skipped notice
         if: env.HAS_GITEE_TOKEN != 'true'
