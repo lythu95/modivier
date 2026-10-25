@@ -20,7 +20,10 @@
 基于 [Tauri 2](https://v2.tauri.app) 构建，主打"够轻、够快、够简单"：冷启动约 0.5 秒、安装包约 5MB、内存占用约 80MB，只保留阅读与最基础的编辑能力。
 
 <div align="center">
-  <img src="docs/screenshot.png" width="720" alt="MoDiViEr 界面截图" />
+  <table><tr>
+    <td align="center"><img src="docs/homepage.png" width="420" alt="主页" /><br/><sub>主页</sub></td>
+    <td align="center"><img src="docs/screenshot.png" width="420" alt="编辑器" /><br/><sub>编辑器</sub></td>
+  </tr></table>
 </div>
 
 ## 为什么做这个

@@ -20,7 +20,10 @@
 [Tauri 2](https://v2.tauri.app) ベース。「軽く・速く・シンプル」を主眼に置いています：コールドスタート約 0.5 秒、インストーラー約 5MB、メモリ使用量約 80MB。表示とごく基本的な編集だけを残しました。
 
 <div align="center">
-  <img src="docs/screenshot.png" width="720" alt="MoDiViEr のスクリーンショット" />
+  <table><tr>
+    <td align="center"><img src="docs/homepage.png" width="420" alt="ホーム" /><br/><sub>ホーム</sub></td>
+    <td align="center"><img src="docs/screenshot.png" width="420" alt="エディター" /><br/><sub>エディター</sub></td>
+  </tr></table>
 </div>
 
 ## なぜ作ったのか

@@ -20,7 +20,10 @@
 Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, simple"*: cold start ≈ 0.5 s, installer ≈ 5 MB, memory ≈ 80 MB — it keeps only viewing and the most essential editing.
 
 <div align="center">
-  <img src="docs/screenshot.png" width="720" alt="MoDiViEr app screenshot" />
+  <table><tr>
+    <td align="center"><img src="docs/homepage.png" width="420" alt="Home" /><br/><sub>Home</sub></td>
+    <td align="center"><img src="docs/screenshot.png" width="420" alt="Editor" /><br/><sub>Editor</sub></td>
+  </tr></table>
 </div>
 
 ## Why
