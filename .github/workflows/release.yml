@@ -137,6 +137,7 @@ jobs:
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITEE_TAG: ${{ github.ref_name }}
+          GITEE_SHA: ${{ github.sha }}
           GITEE_PRERELEASE: ${{ contains(github.ref_name, '-') }}
           GITEE_BODY: |
             **MoDiViEr —— MarkDown Viewer and Editor**
@@ -163,7 +164,7 @@ jobs:
           git push "https://oauth2:$GITEE_TOKEN@gitee.com/lythu/modivier.git" "HEAD:refs/tags/$GITEE_TAG" --force \
             || echo "::warning::tag 推送到 Gitee 失败，Release 将不关联 tag"
 
-          PAYLOAD=$(node -e "console.log(JSON.stringify({access_token:process.env.GITEE_TOKEN,tag_name:process.env.GITEE_TAG,name:'MoDiViEr '+process.env.GITEE_TAG,body:process.env.GITEE_BODY,prerelease:process.env.GITEE_PRERELEASE==='true'}))")
+          PAYLOAD=$(node -e "console.log(JSON.stringify({access_token:process.env.GITEE_TOKEN,tag_name:process.env.GITEE_TAG,name:'MoDiViEr '+process.env.GITEE_TAG,body:process.env.GITEE_BODY,prerelease:process.env.GITEE_PRERELEASE==='true',target_commitish:process.env.GITEE_SHA}))")
           RID=$(echo "$PAYLOAD" | curl -sf -X POST "$API/releases" -H "Content-Type: application/json" -d @- | get_id)
           [ -n "$RID" ] || { echo "Gitee release creation failed"; exit 1; }
           echo "Gitee release id: $RID"
