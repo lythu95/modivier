@@ -171,7 +171,7 @@ jobs:
 
           FAIL=0
           for f in dist/*; do
-            CODE=$(curl -s -o /tmp/attach_resp.json -w "%{http_code}" -X POST "$API/releases/$RID/attach_files?access_token=$GITEE_TOKEN" -F "attachment=@$f")
+            CODE=$(curl -s -o /tmp/attach_resp.json -w "%{http_code}" -X POST "$API/releases/$RID/attach_files" -F "access_token=$GITEE_TOKEN" -F "file=@$f")
             case "$CODE" in
               2*) echo "Uploaded $(basename "$f") ($CODE)" ;;
               *)
