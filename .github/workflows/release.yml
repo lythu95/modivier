@@ -134,6 +134,7 @@ jobs:
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITEE_TAG: ${{ github.ref_name }}
+          GITEE_SHA: ${{ github.sha }}
           GITEE_PRERELEASE: ${{ contains(github.ref_name, '-') }}
           GITEE_BODY: |
             **MoDiViEr —— MarkDown Viewer and Editor**
@@ -156,15 +157,31 @@ jobs:
             curl -sf -X DELETE "$API/releases/$RID?access_token=$GITEE_TOKEN"
           fi
 
-          PAYLOAD=$(node -e "console.log(JSON.stringify({access_token:process.env.GITEE_TOKEN,tag_name:process.env.GITEE_TAG,name:'MoDiViEr '+process.env.GITEE_TAG,body:process.env.GITEE_BODY,prerelease:process.env.GITEE_PRERELEASE==='true',target_commitish:'main'}))")
+          TAG_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$API/tags/$GITEE_TAG?access_token=$GITEE_TOKEN")
+          if [ "$TAG_CODE" != "200" ]; then
+            echo "Creating Gitee tag $GITEE_TAG at $GITEE_SHA"
+            TAG_PAYLOAD=$(node -e "console.log(JSON.stringify({access_token:process.env.GITEE_TOKEN,tag_name:process.env.GITEE_TAG,ref:process.env.GITEE_SHA}))")
+            echo "$TAG_PAYLOAD" | curl -sf -X POST "$API/tags" -H "Content-Type: application/json" -d @- > /dev/null
+          else
+            echo "Gitee tag $GITEE_TAG already exists"
+          fi
+
+          PAYLOAD=$(node -e "console.log(JSON.stringify({access_token:process.env.GITEE_TOKEN,tag_name:process.env.GITEE_TAG,name:'MoDiViEr '+process.env.GITEE_TAG,body:process.env.GITEE_BODY,prerelease:process.env.GITEE_PRERELEASE==='true',target_commitish:process.env.GITEE_SHA}))")
           RID=$(echo "$PAYLOAD" | curl -sf -X POST "$API/releases" -H "Content-Type: application/json" -d @- | get_id)
           [ -n "$RID" ] || { echo "Gitee release creation failed"; exit 1; }
           echo "Gitee release id: $RID"
 
+          FAIL=0
           for f in dist/*; do
-            echo "Uploading $(basename "$f")"
-            curl -sf -X POST "$API/releases/$RID/attach_files" -F "access_token=$GITEE_TOKEN" -F "attachment=@$f" > /dev/null
+            CODE=$(curl -s -o /tmp/attach_resp.json -w "%{http_code}" -X POST "$API/releases/$RID/attach_files?access_token=$GITEE_TOKEN" -F "attachment=@$f")
+            case "$CODE" in
+              2*) echo "Uploaded $(basename "$f") ($CODE)" ;;
+              *)
+                echo "Upload FAILED ($CODE): $(head -c 300 /tmp/attach_resp.json 2>/dev/null)"
+                FAIL=1 ;;
+            esac
           done
+          [ "$FAIL" = "0" ] || exit 1
           echo "Gitee release synced: https://gitee.com/lythu/modivier/releases/tag/$GITEE_TAG"
 
       - name: Gitee sync skipped notice
