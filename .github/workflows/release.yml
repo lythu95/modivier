@@ -124,7 +124,7 @@ jobs:
             | --- | --- |
             | Windows | `MoDiViEr_*_x64-setup.exe`（NSIS 安装包，注册 .md 文件关联） |
             | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
-            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu） |
+            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
 
             > macOS 安装包未签名，首次打开需右键 → 打开。
           prerelease: ${{ contains(github.ref_name, '-') }}
@@ -145,7 +145,7 @@ jobs:
             | --- | --- |
             | Windows | `MoDiViEr_*_x64-setup.exe`（NSIS 安装包，注册 .md 文件关联） |
             | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
-            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu） |
+            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
 
             > macOS 安装包未签名，首次打开需右键 → 打开。
         run: |
@@ -159,8 +159,9 @@ jobs:
             curl -sf -X DELETE "$API/releases/$RID?access_token=$GITEE_TOKEN"
           fi
 
-          # 用 git 协议推 tag 到 Gitee（REST 建标签接口对参数格式挑剔，git 推送最可靠）
-          git push "https://lythu:$GITEE_TOKEN@gitee.com/lythu/modivier.git" "refs/tags/$GITEE_TAG:refs/tags/$GITEE_TAG" --force
+          # 确保 Gitee 侧标签存在（正常发布时应同时把 tag 推到两个远程，这里兜底；失败不阻断）
+          git push "https://oauth2:$GITEE_TOKEN@gitee.com/lythu/modivier.git" "HEAD:refs/tags/$GITEE_TAG" --force \
+            || echo "::warning::tag 推送到 Gitee 失败，Release 将不关联 tag"
 
           PAYLOAD=$(node -e "console.log(JSON.stringify({access_token:process.env.GITEE_TOKEN,tag_name:process.env.GITEE_TAG,name:'MoDiViEr '+process.env.GITEE_TAG,body:process.env.GITEE_BODY,prerelease:process.env.GITEE_PRERELEASE==='true'}))")
           RID=$(echo "$PAYLOAD" | curl -sf -X POST "$API/releases" -H "Content-Type: application/json" -d @- | get_id)
