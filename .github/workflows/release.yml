@@ -101,13 +101,16 @@ jobs:
           find dist -type d -empty -delete
           ls -la dist/
 
+      # GitHub 侧用 softprops（按 tag 复用/更新 Release，重跑幂等）；
+      # release-sync 的 GitHub 路径对已存在的 Release 会报 422，只保留其 Gitee 同步
       - name: Create GitHub Release
-        uses: YuZhiYuanOrg/release-sync@v1
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          platforms: 'github'
-          tag: ${{ github.ref_name }}
-          release-name: 'MoDiViEr ${{ github.ref_name }}'
-          release-body: |
+          tag_name: ${{ github.ref_name }}
+          name: 'MoDiViEr ${{ github.ref_name }}'
+          body: |
             **MoDiViEr —— MarkDown Viewer and Editor**
 
             | 平台 | 安装包 |
@@ -117,10 +120,8 @@ jobs:
             | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
 
             > macOS 安装包未签名，首次打开需右键 → 打开。
-          draft: 'false'
-          prerelease: ${{ contains(github.ref_name, '-') && 'true' || 'false' }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          asset-files: |
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
             dist/*.exe
             dist/*.dmg
             dist/*.deb
