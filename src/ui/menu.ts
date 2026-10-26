@@ -6,8 +6,8 @@ import { closeTabInteractive, closeOtherTabs, newUntitledTab, openViaDialog, sav
 import { toggleMode } from '../editors'
 import { toggleOutline } from './outline'
 import { pickSourceFont } from '../font-setting'
-import { invoke, desktopPlatform, isTauri, revealInDir } from '../lib/tauri'
-import { showAppDialog } from './dialog'
+import { invoke, desktopPlatform, isTauri, openExternal, revealInDir } from '../lib/tauri'
+import { showAppDialog, showLightDialog } from './dialog'
 
 export interface MenuItem {
   label?: string
@@ -213,12 +213,49 @@ async function registerAssociation(): Promise<void> {
   }
 }
 
+const APP_REPO = 'https://github.com/lythu95/modivier'
+
 function showAbout(): void {
-  void showAppDialog({
-    title: t('dlg.aboutTitle'),
-    message: `${APP_NAME} —— ${APP_TAGLINE}\n\n${t('dlg.version', { v: APP_VERSION })}\nTauri 2 · Vditor · CodeMirror 6`,
-    buttons: [{ label: t('dlg.ok'), value: 'ok', kind: 'primary' }],
-    cancelValue: 'ok',
+  showLightDialog((card, close) => {
+    card.classList.add('about-card')
+
+    // 右上角浅色小叉，替代确认按钮
+    const closeBtn = document.createElement('button')
+    closeBtn.className = 'dialog-close'
+    closeBtn.setAttribute('aria-label', 'Close')
+    closeBtn.innerHTML =
+      '<svg viewBox="0 0 12 12" width="12" height="12"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>'
+    closeBtn.addEventListener('click', close)
+    card.appendChild(closeBtn)
+
+    // 与欢迎页同构的居中 logo
+    const logo = document.createElement('div')
+    logo.className = 'welcome-logo about-logo'
+    logo.innerHTML = '<span>M</span><i></i>'
+
+    const name = document.createElement('div')
+    name.className = 'about-name'
+    name.textContent = APP_NAME
+
+    const tagline = document.createElement('div')
+    tagline.className = 'about-tagline'
+    tagline.textContent = APP_TAGLINE
+
+    const version = document.createElement('div')
+    version.className = 'about-version'
+    version.textContent = t('dlg.version', { v: APP_VERSION })
+
+    const link = document.createElement('a')
+    link.className = 'about-link'
+    link.href = APP_REPO
+    link.textContent = APP_REPO
+    link.title = APP_REPO
+    link.addEventListener('click', (e) => {
+      e.preventDefault()
+      void openExternal(APP_REPO)
+    })
+
+    card.append(logo, name, tagline, version, link)
   })
 }
 

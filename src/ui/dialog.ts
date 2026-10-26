@@ -103,6 +103,44 @@ export function appAlert(message: string, title: string): Promise<void> {
   }).then(() => undefined)
 }
 
+/* ---------------- 轻量自定义对话框（关于页等无按钮场景） ---------------- */
+
+/**
+ * 无按钮组的自定义对话框：内容由构建方完全接管（如关于页），
+ * Esc 或构建方放置的关闭按钮触发 close；不返回结果。
+ */
+export function showLightDialog(build: (card: HTMLElement, close: () => void) => void): void {
+  const overlay = document.createElement('div')
+  overlay.className = 'dialog-overlay'
+  const card = document.createElement('div')
+  card.className = 'dialog-card'
+  card.setAttribute('role', 'dialog')
+  card.setAttribute('aria-modal', 'true')
+
+  let done = false
+  const close = () => {
+    if (done) return
+    done = true
+    window.removeEventListener('keydown', onKey, true)
+    overlay.remove()
+    openCount -= 1
+    focusActiveEditor()
+  }
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      close()
+    }
+  }
+  window.addEventListener('keydown', onKey, true)
+
+  build(card, close)
+  overlay.appendChild(card)
+  document.body.appendChild(overlay)
+  openCount += 1
+}
+
 /* ---------------- 列表选择对话框（字体选择等） ---------------- */
 
 export interface ChoiceOption {

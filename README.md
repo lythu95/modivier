@@ -66,9 +66,9 @@
 
 各平台安装包均可从 [Releases](../../releases) 页面获取。
 
-**Windows**：下载 `MoDiViEr_x.y.z_x64-setup.exe`（约 5MB 的 NSIS 安装包），安装后自动注册 `.md` / `.markdown` 文件关联，资源管理器里双击即可打开；免安装可直接下载 `MoDiViEr_x.y.z_x64_portable.exe` 便携单文件，在菜单里点“关联 .md 文件”注册到系统“打开方式”列表（当前用户级、免管理员）。Windows 10 / 11 自带 WebView2，无需额外安装运行时。
+**Windows**：下载 `modivier_x.y.z_x64-setup.exe`（约 5MB 的 NSIS 安装包），安装后自动注册 `.md` / `.markdown` 文件关联，资源管理器里双击即可打开；免安装可直接下载 `modivier_x.y.z_x64_portable.exe` 便携单文件，在菜单里点“关联 .md 文件”注册到系统“打开方式”列表（当前用户级、免管理员）。Windows 10 / 11 自带 WebView2，无需额外安装运行时。
 
-**macOS**（Intel / Apple Silicon 通用）：下载 `MoDiViEr_x.y.z_universal.dmg`，把 MoDiViEr.app 拖入“应用程序”并启动一次；之后在 `.md` 文件上右键 → 打开方式 选择 MoDiViEr，或在“显示简介”（⌘I）→ 打开方式 → “全部更改…”设为默认，双击即可打开（已运行时在现有窗口开新标签）。安装包未签名：首次打开若被 Gatekeeper 拦截，右键 → 打开 即可。
+**macOS**（Intel / Apple Silicon 通用）：下载 `modivier_x.y.z_universal.dmg`，把 MoDiViEr.app 拖入“应用程序”并启动一次；之后在 `.md` 文件上右键 → 打开方式 选择 MoDiViEr，或在“显示简介”（⌘I）→ 打开方式 → “全部更改…”设为默认，双击即可打开（已运行时在现有窗口开新标签）。安装包未签名：首次打开若被 Gatekeeper 拦截，右键 → 打开 即可。
 
 **Linux**：`npm run tauri build` 产出 deb / rpm 包（已注册 Markdown MIME 关联）；如需 AppImage 可用 `npx tauri build --bundles appimage` 追加。
 

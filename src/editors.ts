@@ -2,6 +2,7 @@ import { getTheme, onThemeChange } from './theme'
 import { onLocaleChange, vditorLang } from './i18n'
 import { activeId, activeTab, notify, tabs, type Tab } from './state'
 import { installImageResolver } from './images'
+import { parseOutline, type OutlineNode } from './ui/outline'
 
 const VDITOR_CONTENT_THEME_PATH = '/vditor/dist/css/content-theme'
 
@@ -157,6 +158,12 @@ export function activateEditor(tab: Tab): void {
       if (tab.id === activeId && tab.mode === 'source') {
         tab.cm.focus()
         emitCursor()
+        // 从文档切来时的定位（编辑器实例此时才首次创建）
+        const anchor = pendingCmAnchors.get(tab)
+        if (anchor) {
+          pendingCmAnchors.delete(tab)
+          m.scrollCmTo(tab.cm, anchor.line, anchor.ratio)
+        }
       }
     })
   }
@@ -178,11 +185,99 @@ export function focusActiveEditor(): void {
   else if (vditorReady(tab)) tab.vditor?.focus()
 }
 
-/** Ctrl+/ 切换模式：切换前把内容同步给目标编辑器 */
+/* ---------------- 模式切换滚动定位 ---------------- */
+
+interface ModeAnchor {
+  /** 标题序号（DOM/文档顺序，-1 = 附近无标题） */
+  order: number
+  /** 顶部可见行号（0 起，-1 = 不可用） */
+  line: number
+  /** 滚动比例兜底（0~1） */
+  ratio: number
+}
+
+/** 源码模式尚未创建实例时的待应用定位 */
+const pendingCmAnchors = new WeakMap<Tab, ModeAnchor>()
+
+/** 标题树按文档顺序摊平（order 即数组下标） */
+function flattenOutline(nodes: OutlineNode[]): OutlineNode[] {
+  const out: OutlineNode[] = []
+  const walk = (list: OutlineNode[]) => {
+    for (const n of list) {
+      out.push(n)
+      walk(n.children)
+    }
+  }
+  walk(nodes)
+  return out
+}
+
+/** IR 滚动容器：从 pre 向上找真正溢出的元素（Vditor 版本间结构有差异） */
+function irScroller(tab: Tab, pre: HTMLElement): HTMLElement {
+  let el: HTMLElement | null = pre
+  while (el && el !== tab.vdHost) {
+    if (el.scrollHeight > el.clientHeight + 1) return el
+    el = el.parentElement
+  }
+  return pre
+}
+
+function captureVditorAnchor(tab: Tab): ModeAnchor | null {
+  if (!vditorReady(tab)) return null
+  const pre = tab.vdHost.querySelector<HTMLElement>('.vditor-ir pre.vditor-reset')
+  if (!pre) return null
+  const scroller = irScroller(tab, pre)
+  const max = scroller.scrollHeight - scroller.clientHeight
+  const ratio = max > 0 ? scroller.scrollTop / max : 0
+  // 视口顶部往上最近的一个标题（DOM 序号），在目标模式里按同一序号找回
+  const preTop = pre.getBoundingClientRect().top
+  let order = -1
+  pre.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach((h, i) => {
+    if (h.getBoundingClientRect().top - preTop <= 12) order = i
+  })
+  const line = order >= 0 ? (flattenOutline(parseOutline(tab.content))[order]?.lineNo ?? -1) : -1
+  return { order, line, ratio }
+}
+
+function captureCmAnchor(tab: Tab): ModeAnchor | null {
+  if (!tab.cm) return null
+  const cm = tab.cm
+  const max = cm.scrollDOM.scrollHeight - cm.scrollDOM.clientHeight
+  const ratio = max > 0 ? cm.scrollDOM.scrollTop / max : 0
+  const block = cm.lineBlockAtHeight(Math.max(0, cm.scrollDOM.scrollTop))
+  const line = cm.state.doc.lineAt(block.from).number - 1
+  // 该行上方最近标题（DOM 序号），在 IR 里按同一序号找回
+  let order = -1
+  for (const h of flattenOutline(parseOutline(tab.content))) {
+    if (h.lineNo <= line) order = h.order
+  }
+  return { order, line, ratio }
+}
+
+function applyAnchorToVditor(tab: Tab, anchor: ModeAnchor): void {
+  const pre = tab.vdHost.querySelector<HTMLElement>('.vditor-ir pre.vditor-reset')
+  if (!pre) return
+  if (anchor.order >= 0) {
+    const target = pre.querySelectorAll('h1,h2,h3,h4,h5,h6')[anchor.order] as
+      | HTMLElement
+      | undefined
+    if (target) {
+      target.scrollIntoView({ block: 'start' })
+      return
+    }
+  }
+  const scroller = irScroller(tab, pre)
+  const max = scroller.scrollHeight - scroller.clientHeight
+  scroller.scrollTop = anchor.ratio * max
+}
+
+/** Ctrl+/ 切换模式：切换前把内容同步给目标编辑器，并互相定位滚动位置 */
 export function toggleMode(tab: Tab): void {
   tab.content = currentContent(tab)
-  tab.mode = tab.mode === 'ir' ? 'source' : 'ir'
-  if (tab.mode === 'source' && tab.cm) {
+  const goingSource = tab.mode === 'ir'
+  const anchor = goingSource ? captureVditorAnchor(tab) : captureCmAnchor(tab)
+  tab.mode = goingSource ? 'source' : 'ir'
+  if (goingSource && tab.cm) {
     // 已有 CodeMirror 实例：整体替换为最新内容（清空撤销栈，避免跨模式混乱）
     const cm = tab.cm
     void loadCmDeps().then((m) => {
@@ -196,10 +291,20 @@ export function toggleMode(tab: Tab): void {
           },
           emitCursor,
         )
+        if (anchor) m.scrollCmTo(cm, anchor.line, anchor.ratio)
       }
     })
+  } else if (goingSource && anchor) {
+    // CodeMirror 首次创建是异步的，定位暂存、创建完成后再应用
+    pendingCmAnchors.set(tab, anchor)
   }
   if (tab.id === activeId) activateEditor(tab)
+  if (!goingSource && anchor) {
+    // 内容有改动时 setValue 会重置 Vditor 滚动，等一帧 DOM 稳定后再定位
+    requestAnimationFrame(() => {
+      if (tab.root.isConnected && tab.mode === 'ir') applyAnchorToVditor(tab, anchor)
+    })
+  }
   notify()
 }
 

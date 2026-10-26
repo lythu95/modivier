@@ -94,3 +94,18 @@ export function reconfigureCmTheme(view: EditorView, dark: boolean): void {
     effects: cmThemeComp.reconfigure(dark ? oneDark : cmLightTheme),
   })
 }
+
+/** 模式切换定位：把视口滚到 0 起的行号处（-1 时按 ratio 兜底），顺带把光标放到该行行首 */
+export function scrollCmTo(view: EditorView, line: number, ratio: number): void {
+  const doc = view.state.doc
+  if (line >= 0 && doc.lines > 0) {
+    const l = doc.line(Math.min(line + 1, doc.lines))
+    view.dispatch({
+      selection: { anchor: l.from },
+      effects: EditorView.scrollIntoView(l.from, { y: 'start' }),
+    })
+    return
+  }
+  const max = view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight
+  view.scrollDOM.scrollTop = ratio * max
+}

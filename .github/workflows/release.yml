@@ -78,7 +78,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path bundles | Out-Null
           $version = "${{ github.ref_name }}" -replace '^v',''
-          Copy-Item "src-tauri/target/release/modivier.exe" ("bundles/MoDiViEr_{0}_x64_portable.exe" -f $version)
+          Copy-Item "src-tauri/target/release/modivier.exe" ("bundles/modivier_{0}_x64_portable.exe" -f $version)
 
       - name: List bundle outputs
         if: runner.os == 'Linux'
@@ -131,9 +131,9 @@ jobs:
 
             | 平台 | 安装包 |
             | --- | --- |
-            | Windows | `MoDiViEr_*_x64-setup.exe`（安装包）/ `MoDiViEr_*_x64_portable.exe`（便携单文件，免安装） |
-            | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
-            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
+            | Windows | `modivier_*_x64-setup.exe`（安装包）/ `modivier_*_x64_portable.exe`（便携单文件，免安装） |
+            | macOS | `modivier_*.dmg`（Intel / Apple Silicon 通用） |
+            | Linux | `modivier_*.deb`（Debian/Ubuntu）、`modivier-*.rpm`（Fedora/openSUSE） |
 
             > macOS 安装包未签名，首次打开需右键 → 打开。
           prerelease: ${{ contains(github.ref_name, '-') }}
@@ -153,9 +153,9 @@ jobs:
 
             | 平台 | 安装包 |
             | --- | --- |
-            | Windows | `MoDiViEr_*_x64-setup.exe`（安装包）/ `MoDiViEr_*_x64_portable.exe`（便携单文件，免安装） |
-            | macOS | `MoDiViEr_*.dmg`（Intel / Apple Silicon 通用） |
-            | Linux | `MoDiViEr_*.deb`（Debian/Ubuntu）、`MoDiViEr-*.rpm`（Fedora/openSUSE） |
+            | Windows | `modivier_*_x64-setup.exe`（安装包）/ `modivier_*_x64_portable.exe`（便携单文件，免安装） |
+            | macOS | `modivier_*.dmg`（Intel / Apple Silicon 通用） |
+            | Linux | `modivier_*.deb`（Debian/Ubuntu）、`modivier-*.rpm`（Fedora/openSUSE） |
 
             > macOS 安装包未签名，首次打开需右键 → 打开。
         run: |
