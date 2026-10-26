@@ -279,7 +279,8 @@ button {
 }
 
 #sidebar-panel {
-  width: 232px;
+  /* 跟随 #sidebar 的拖拽宽度（写死像素会让拖拽失效） */
+  width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
