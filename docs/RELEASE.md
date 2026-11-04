@@ -6,10 +6,11 @@
 
 ## 快速发版（Happy Path）
 
-1. **同步版本号（三处 + tag，必须一致）**：
+1. **同步版本号（四处 + tag，必须一致）**：
    - `package.json`
    - `src-tauri/tauri.conf.json` ← **产物文件名由此决定**
    - `src-tauri/Cargo.toml`（改完可跑 `cargo check --manifest-path src-tauri/Cargo.toml` 顺带刷新 Cargo.lock）
+   - `src/app-info.ts` 的 `APP_VERSION` ← **关于页显示的版本号，容易漏**（v0.2.0 就漏过一次）
 2. commit 并推送 main 到两个远程：`git push github main && git push gitee main`
 3. 打 tag 并**同时推两个远程**：
 
