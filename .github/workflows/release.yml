@@ -14,14 +14,15 @@ jobs:
       fail-fast: false
       matrix:
         settings:
-          # macOS 通用二进制（Intel + Apple Silicon 一个安装包）
+          # macOS 通用二进制（Intel + Apple Silicon 一个安装包）+ 便携单文件
           - platform: macos-latest
             args: --target universal-apple-darwin
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
-            artifact-name: macos-dmg
+            artifact-name: macos-packages
             artifact-path: |
               src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
-          # Linux：deb + rpm（在 22.04 上编译，兼容较老的 glibc）
+              bundles/*
+          # Linux：deb + rpm + 便携单文件（在 22.04 上编译，兼容较老的 glibc）
           - platform: ubuntu-22.04
             args: ''
             rust-targets: ''
@@ -29,6 +30,7 @@ jobs:
             artifact-path: |
               src-tauri/target/release/bundle/deb/*.deb
               src-tauri/target/release/bundle/rpm/*.rpm
+              bundles/*
           # Windows：NSIS 安装包
           - platform: windows-latest
             args: ''
@@ -79,6 +81,20 @@ jobs:
           New-Item -ItemType Directory -Force -Path bundles | Out-Null
           $version = "${{ github.ref_name }}" -replace '^v',''
           Copy-Item "src-tauri/target/release/modivier.exe" ("bundles/modivier_{0}_x64_portable.exe" -f $version)
+
+      # 便携单文件：无安装权限的场景直接运行（运行仍需系统 WebView 运行时，README 有说明）
+      - name: Stage portable executable (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p bundles
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            cp src-tauri/target/release/modivier "bundles/modivier_${VERSION}_linux_x64_portable"
+          else
+            cp src-tauri/target/universal-apple-darwin/release/modivier "bundles/modivier_${VERSION}_macos_universal_portable"
+          fi
+          chmod +x bundles/*_portable
+          ls -la bundles/
 
       - name: List bundle outputs
         if: runner.os == 'Linux'
@@ -132,10 +148,10 @@ jobs:
             | 平台 | 安装包 |
             | --- | --- |
             | Windows | `modivier_*_x64-setup.exe`（安装包）/ `modivier_*_x64_portable.exe`（便携单文件，免安装） |
-            | macOS | `modivier_*.dmg`（Intel / Apple Silicon 通用） |
-            | Linux | `modivier_*.deb`（Debian/Ubuntu）、`modivier-*.rpm`（Fedora/openSUSE） |
+            | macOS | `modivier_*.dmg`（Intel / Apple Silicon 通用）/ `modivier_*_macos_universal_portable`（便携单文件） |
+            | Linux | `modivier_*.deb`（Debian/Ubuntu）、`modivier-*.rpm`（Fedora/openSUSE）/ `modivier_*_linux_x64_portable`（便携单文件，免安装） |
 
-            > macOS 安装包未签名，首次打开需右键 → 打开。
+            > macOS 安装包未签名，首次打开需右键 → 打开。便携单文件下载后需 `chmod +x`（Linux 可直接运行；macOS 另需去除 quarantine 标记）。运行便携版仍需系统 WebView 运行时（详见 README）。
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: dist/*
 
@@ -154,10 +170,10 @@ jobs:
             | 平台 | 安装包 |
             | --- | --- |
             | Windows | `modivier_*_x64-setup.exe`（安装包）/ `modivier_*_x64_portable.exe`（便携单文件，免安装） |
-            | macOS | `modivier_*.dmg`（Intel / Apple Silicon 通用） |
-            | Linux | `modivier_*.deb`（Debian/Ubuntu）、`modivier-*.rpm`（Fedora/openSUSE） |
+            | macOS | `modivier_*.dmg`（Intel / Apple Silicon 通用）/ `modivier_*_macos_universal_portable`（便携单文件） |
+            | Linux | `modivier_*.deb`（Debian/Ubuntu）、`modivier-*.rpm`（Fedora/openSUSE）/ `modivier_*_linux_x64_portable`（便携单文件，免安装） |
 
-            > macOS 安装包未签名，首次打开需右键 → 打开。
+            > macOS 安装包未签名，首次打开需右键 → 打开。便携单文件下载后需 `chmod +x`（Linux 可直接运行；macOS 另需去除 quarantine 标记）。运行便携版仍需系统 WebView 运行时（详见 README）。
         run: |
           set -e
           API="https://gitee.com/api/v5/repos/lythu/modivier"

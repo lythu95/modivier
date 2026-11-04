@@ -33,11 +33,13 @@
 | --- | --- | --- | --- |
 | Windows 安装包 | `modivier_<版本>_x64-setup.exe` | ~5MB | tauri.conf.json |
 | Windows 便携单文件 | `modivier_<tag>_x64_portable.exe` | ~10MB | **tag**（workflow 里改名） |
-| macOS 通用 | `modivier_<版本>_universal.dmg` | ~10.6MB | tauri.conf.json |
+| macOS 安装包 | `modivier_<版本>_universal.dmg` | ~10.6MB | tauri.conf.json |
+| macOS 便携单文件 | `modivier_<tag>_macos_universal_portable` | ~10MB | **tag**（workflow 里改名） |
 | Linux | `modivier_<版本>_amd64.deb` | ~5.7MB | tauri.conf.json |
 | Linux | `modivier-<版本>-1.x86_64.rpm` | ~5.8MB | tauri.conf.json |
+| Linux 便携单文件 | `modivier_<tag>_linux_x64_portable` | ~10MB | **tag**（workflow 里改名） |
 
-便携 exe 的名字取自 tag、其余取自 tauri.conf.json——**tag 与配置版本号不一致时文件名会对不上**，发布前务必核对。
+便携单文件（`*_portable`）的名字取自 tag、其余取自 tauri.conf.json——**tag 与配置版本号不一致时文件名会对不上**，发布前务必核对。便携单文件上传 zip 后不保留执行位，下载后需 `chmod +x`（Release 说明里已写明）；运行仍需系统 WebView 运行时（Windows=WebView2 / macOS=WKWebView / Linux=WebKitGTK 4.1）。
 
 平台打包行为由 `src-tauri/tauri.{windows,macos,linux}.conf.json` 控制（按平台自动合并，主配置 `bundle.targets` 留空）：
 Windows=nsis、macOS=dmg（universal 双架构）、Linux=deb+rpm。
@@ -45,7 +47,7 @@ Windows=nsis、macOS=dmg（universal 双架构）、Linux=deb+rpm。
 ## 自动化流程（release.yml 做了什么）
 
 1. **build 矩阵**（三平台并行）：Rust 缓存 + npm ci（postinstall 重建 vditor 资源）→ `npm run tauri build` → 产物 upload-artifact
-   - Windows 额外一步：把 `src-tauri/target/release/modivier.exe` 复制为 `bundles/modivier_<tag>_x64_portable.exe`
+   - 三平台各多一步"Stage portable executable"：复制主程序为便携单文件到 `bundles/`（Windows `modivier_<tag>_x64_portable.exe`、Linux `modivier_<tag>_linux_x64_portable`、macOS `modivier_<tag>_macos_universal_portable`，均 chmod +x）
 2. **release 任务**（仅 tag 触发）：
    - 下载全部 artifact 并**摊平到 `dist/` 根目录**（见踩坑 #5）
    - GitHub Release：`softprops/action-gh-release@v3`（按 tag 复用/更新，重跑幂等；tag 带 `-` 自动 prerelease）

@@ -17,6 +17,10 @@
 
 </div>
 
+**MoDiViEr** (pronounced "modifier") — MarkDown Viewer and Editor
+
+A lightweight, fast, out-of-the-box Markdown viewer & editor: double-click to read, click to edit — on Windows, macOS and Linux.
+
 Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, simple"*: cold start ≈ 0.5 s, installer ≈ 5 MB, memory ≈ 80 MB — it keeps only viewing and the most essential editing.
 
 <div align="center">
@@ -68,9 +72,9 @@ Installers for all platforms are available on the [Releases](../../releases) pag
 
 **Windows**: grab `modivier_x.y.z_x64-setup.exe` (a ~5 MB NSIS installer) — it registers `.md` / `.markdown` associations, so double-clicking a Markdown file opens it right away. For a portable setup, download `modivier_x.y.z_x64_portable.exe` (single file, no install) and use the menu item "Associate .md files" to register it with the system's "Open with" list (per-user, no admin needed). Windows 10 / 11 ships WebView2 — no extra runtime required.
 
-**macOS** (Intel & Apple Silicon universal): download `modivier_x.y.z_universal.dmg`, drag MoDiViEr.app into Applications and launch it once; then right-click a `.md` file → Open With → MoDiViEr, or set it as the default via Get Info (⌘I) → "Open with" → "Change All…". Double-clicking now opens the file directly (a second file opens as a new tab in the running window). The bundle is unsigned: if Gatekeeper blocks the first launch, right-click → Open.
+**macOS** (Intel & Apple Silicon universal): download `modivier_x.y.z_universal.dmg`, drag MoDiViEr.app into Applications and launch it once; then right-click a `.md` file → Open With → MoDiViEr, or set it as the default via Get Info (⌘I) → "Open with" → "Change All…". Double-clicking now opens the file directly (a second file opens as a new tab in the running window). The bundle is unsigned: if Gatekeeper blocks the first launch, right-click → Open. For a no-install setup, grab the portable single file `modivier_x.y.z_macos_universal_portable`, run `chmod +x` and clear the quarantine flag (`xattr -d com.apple.quarantine modivier_*_portable`), then run it directly.
 
-**Linux**: `npm run tauri build` produces deb / rpm packages (Markdown MIME associations included); build an AppImage on demand with `npx tauri build --bundles appimage`.
+**Linux**: install `modivier_x.y.z_amd64.deb` on Debian / Ubuntu or `modivier-x.y.z-1.x86_64.rpm` on Fedora / openSUSE (Markdown MIME associations included). For ops scenarios without install permission, download the portable single file `modivier_x.y.z_linux_x64_portable` and run it after `chmod +x` (e.g. `./modivier_x.y.z_linux_x64_portable notes.md`; it needs the system WebKitGTK 4.1, which mainstream desktop distros ship by default).
 
 ## Development
 

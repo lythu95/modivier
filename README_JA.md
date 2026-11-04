@@ -17,6 +17,10 @@
 
 </div>
 
+**MoDiViEr**（読み方は modifier）—— MarkDown Viewer and Editor
+
+軽量・高速・すぐに使える Markdown ビューア＆エディタ：ダブルクリックで開いて、そのまま編集。Windows / macOS / Linux に対応。
+
 [Tauri 2](https://v2.tauri.app) ベース。「軽く・速く・シンプル」を主眼に置いています：コールドスタート約 0.5 秒、インストーラー約 5MB、メモリ使用量約 80MB。表示とごく基本的な編集だけを残しました。
 
 <div align="center">
@@ -68,9 +72,9 @@
 
 **Windows**：`modivier_x.y.z_x64-setup.exe`（約 5MB の NSIS インストーラー）をダウンロード。インストール時に `.md` / `.markdown` の関連付けが自動登録され、ダブルクリックするだけで開けます。インストール不要で使う場合は `modivier_x.y.z_x64_portable.exe`（ポータブル単体ファイル）をダウンロードし、メニューの「.md ファイルを関連付け」からシステムの「プログラムから開く」に登録できます（現在のユーザー単位、管理者権限不要）。Windows 10 / 11 には WebView2 が内蔵されており、追加のランタイムは不要です。
 
-**macOS**（Intel / Apple Silicon 汎用）：`modivier_x.y.z_universal.dmg` をダウンロードし、MoDiViEr.app を「アプリケーション」にドラッグして一度起動。その後 `.md` ファイルを右クリック → 「このアプリケーションで開く」で選ぶか、「情報を見る」（⌘I）→ 「このアプリケーションで開く」→ 「すべてを変更…」でデフォルトに設定すると、ダブルクリックで直接開けます（起動済みなら既存ウィンドウに新規タブで開きます）。パッケージは未署名のため、初回起動時に Gatekeeper にブロックされたら右クリック → 「開く」で起動できます。
+**macOS**（Intel / Apple Silicon 汎用）：`modivier_x.y.z_universal.dmg` をダウンロードし、MoDiViEr.app を「アプリケーション」にドラッグして一度起動。その後 `.md` ファイルを右クリック → 「このアプリケーションで開く」で選ぶか、「情報を見る」（⌘I）→ 「このアプリケーションで開く」→ 「すべてを変更…」でデフォルトに設定すると、ダブルクリックで直接開けます（起動済みなら既存ウィンドウに新規タブで開きます）。パッケージは未署名のため、初回起動時に Gatekeeper にブロックされたら右クリック → 「開く」で起動できます。インストール不要で使う場合はポータブル単体ファイル `modivier_x.y.z_macos_universal_portable` をダウンロードし、`chmod +x` と quarantine 解除（`xattr -d com.apple.quarantine modivier_*_portable`）の後、直接実行できます。
 
-**Linux**：`npm run tauri build` で deb / rpm パッケージを生成（Markdown MIME 関連付けを同梱）。AppImage が必要な場合は `npx tauri build --bundles appimage` で追加ビルドできます。
+**Linux**：Debian / Ubuntu では `modivier_x.y.z_amd64.deb`、Fedora / openSUSE では `modivier-x.y.z-1.x86_64.rpm` でインストール（Markdown MIME 関連付けを同梱）。インストール権限のない運用環境ではポータブル単体ファイル `modivier_x.y.z_linux_x64_portable` をダウンロードし、`chmod +x` の後直接実行できます（例：`./modivier_x.y.z_linux_x64_portable notes.md`。システムの WebKitGTK 4.1 が必要で、主要デスクトップディストリビューションには標準で含まれています）。
 
 ## 開発
 

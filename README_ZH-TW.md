@@ -17,6 +17,10 @@
 
 </div>
 
+**MoDiViEr**（讀作 modifier）—— MarkDown Viewer and Editor
+
+一款輕量、快速、開箱即用的 Markdown 閱讀與編輯器：雙擊即看、即點即改，涵蓋 Windows / macOS / Linux。
+
 以 [Tauri 2](https://v2.tauri.app) 建置，主打「夠輕、夠快、夠簡單」：冷啟動約 0.5 秒、安裝包約 5MB、記憶體占用約 80MB，只保留閱讀與最基礎的編輯能力。
 
 <div align="center">
@@ -68,9 +72,9 @@
 
 **Windows**：下載 `modivier_x.y.z_x64-setup.exe`（約 5MB 的 NSIS 安裝包），安裝後自動註冊 `.md` / `.markdown` 檔案關聯，在檔案總管雙擊即可開啟；免安裝可直接下載 `modivier_x.y.z_x64_portable.exe` 便攜單檔，在選單裡點「關聯 .md 檔案」註冊到系統「開啟方式」列表（目前使用者層級、免系統管理員）。Windows 10 / 11 內建 WebView2，無需額外安裝執行環境。
 
-**macOS**（Intel / Apple Silicon 通用）：下載 `modivier_x.y.z_universal.dmg`，將 MoDiViEr.app 拖入「應用程式」並啟動一次；之後在 `.md` 檔案上右鍵 → 開啟方式 選擇 MoDiViEr，或在「顯示簡介」（⌘I）→ 開啟方式 → 「全部更改…」設為預設，雙擊即可開啟（已執行時在現有視窗開新分頁）。安裝包未簽署：首次開啟若被 Gatekeeper 攔截，右鍵 → 開啟 即可。
+**macOS**（Intel / Apple Silicon 通用）：下載 `modivier_x.y.z_universal.dmg`，將 MoDiViEr.app 拖入「應用程式」並啟動一次；之後在 `.md` 檔案上右鍵 → 開啟方式 選擇 MoDiViEr，或在「顯示簡介」（⌘I）→ 開啟方式 → 「全部更改…」設為預設，雙擊即可開啟（已執行時在現有視窗開新分頁）。安裝包未簽署：首次開啟若被 Gatekeeper 攔截，右鍵 → 開啟 即可。免安裝情境可下載便攜單檔 `modivier_x.y.z_macos_universal_portable`，`chmod +x` 並移除 quarantine 標記（`xattr -d com.apple.quarantine modivier_*_portable`）後直接執行。
 
-**Linux**：`npm run tauri build` 產出 deb / rpm 包（已註冊 Markdown MIME 關聯）；如需 AppImage 可用 `npx tauri build --bundles appimage` 追加。
+**Linux**：Debian / Ubuntu 用 `modivier_x.y.z_amd64.deb`、Fedora / openSUSE 用 `modivier-x.y.z-1.x86_64.rpm` 安裝（已註冊 Markdown MIME 關聯）。無安裝權限的維運情境可下載便攜單檔 `modivier_x.y.z_linux_x64_portable`，`chmod +x` 後直接執行（如 `./modivier_x.y.z_linux_x64_portable notes.md`；依賴系統 WebKitGTK 4.1，主流桌面發行版一般內建）。
 
 ## 開發
 
