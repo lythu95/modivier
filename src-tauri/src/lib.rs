@@ -153,6 +153,8 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             let files = extract_file_args(&args);
             if let Some(win) = app.get_webview_window("main") {
+                // 最小化的窗口对 set_focus 无响应（Windows 需先 SW_RESTORE），必须先还原
+                let _ = win.unminimize();
                 let _ = win.set_focus();
                 if !files.is_empty() {
                     let _ = app.emit("open-files", files);
@@ -202,6 +204,7 @@ pub fn run() {
                         .unwrap()
                         .extend(paths.iter().cloned());
                     if let Some(win) = app.get_webview_window("main") {
+                        let _ = win.unminimize();
                         let _ = win.set_focus();
                     }
                     let _ = app.emit("open-files", paths);
