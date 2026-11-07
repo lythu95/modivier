@@ -17,7 +17,7 @@ import { t } from './i18n'
 
 const MD_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd', 'txt'] }]
 
-const MD_EXT = /\.(md|markdown|mdown|mkd|txt)$/i
+export const MD_EXT = /\.(md|markdown|mdown|mkd|txt)$/i
 
 interface ReadResult {
   content: string

@@ -14,6 +14,37 @@ import { getTheme } from './theme'
 
 export { EditorState, EditorView }
 
+/* ---------------- 源码模式链接点击 ---------------- */
+
+/** 由 main.ts 注入的链接打开实现（外链/锚点/本地文件），避免本模块反向依赖文件层 */
+let linkOpener: ((url: string) => void) | null = null
+
+export function setLinkOpener(fn: (url: string) => void): void {
+  linkOpener = fn
+}
+
+/** 点击行内链接语法（[text](url) 或 <url>）时打开目标 */
+function cmLinkClick(e: MouseEvent, view: EditorView): boolean {
+  if (!linkOpener) return false
+  const pos = view.posAtCoords({ x: e.clientX, y: e.clientY })
+  if (pos == null) return false
+  const line = view.state.doc.lineAt(pos)
+  const re = /\[([^\]\[]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|<([^<>\s]+)>/g
+  for (const m of line.text.matchAll(re)) {
+    const start = line.from + (m.index ?? 0)
+    const end = start + m[0].length
+    if (pos >= start && pos <= end) {
+      const url = m[2] ?? m[3]
+      if (url) {
+        e.preventDefault()
+        linkOpener(url)
+        return true
+      }
+    }
+  }
+  return false
+}
+
 const cmThemeComp = new Compartment()
 
 const cmLightTheme = EditorView.theme({
@@ -45,6 +76,9 @@ export function buildCmExtensions(dark: boolean) {
     markdown(),
     syntaxHighlighting(defaultHighlightStyle),
     highlightSelectionMatches(),
+    EditorView.domEventHandlers({
+      mousedown: (e, view) => cmLinkClick(e, view),
+    }),
     cmThemeComp.of(dark ? oneDark : cmLightTheme),
   ]
 }

@@ -44,6 +44,10 @@ Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, si
 - **Multiple tabs** (drag files in, `Ctrl+O`, `Ctrl+N`, middle-click / `Ctrl+W` to close, `Ctrl+Tab` to cycle, `Ctrl+1..9` to jump directly)
 - **Status bar** (line/column, selected & total character count; Markdown/Source and Light/Dark toggles at bottom right)
 - **UI languages** (简体中文 / 繁體中文 / English / 日本語, switched in the menu, follows the system on first run)
+- **Link clicking**: external links open in the system browser, `#anchors` jump to headings, relative links open in-app (Markdown files as tabs, other files via the system default); works in source mode too
+- **Task lists**: click checkboxes to toggle; the state is written back into the source and saved with the document
+- **Code copy**: hover a code block and click the corner button to copy
+- **Find**: `Ctrl+F` opens a find bar (WYSIWYG mode searches rendered text; source mode uses CodeMirror search)
 - **Local images**: relative-path images inside the Markdown are resolved and displayed
 - **Light / dark theme** (follows the system initially, remembered after manual toggle)
 - **VSCode-style full-width scrolling**: content is centered, but scrolling anywhere in the content area scrolls the document

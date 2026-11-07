@@ -14,14 +14,21 @@ import {
   tabs,
 } from './state'
 import { focusActiveEditor, toggleMode, updateLayout, warmupEditors } from './editors'
+import { EditorView } from '@codemirror/view'
+import { parseOutline, type OutlineNode } from './ui/outline'
 import {
   closeActiveTab,
   initFileActions,
+  MD_EXT,
   newUntitledTab,
+  openPath,
   openPaths,
   openViaDialog,
   saveTab,
 } from './files'
+import { joinPath } from './images'
+import { openLocal } from './lib/tauri'
+import { toggleSearchBar } from './ui/searchbar'
 import { setupTabsBar } from './ui/tabs'
 import { setupTitlebar } from './ui/titlebar'
 import { setupStatusbar } from './ui/statusbar'
@@ -115,6 +122,8 @@ async function main(): Promise<void> {
   // 后台预热编辑器大模块（vditor / CodeMirror 已按需分包），
   // 窗口先显示，首次打开文件时模块已就绪
   warmupEditors()
+  // 源码模式的链接点击复用同一套分流逻辑（cm-deps 是懒加载 chunk，动态注入避免主包引用）
+  void import('./cm-deps').then((m) => m.setLinkOpener((url) => void dispatchLinkHref(url)))
 
   const app = document.getElementById('app')!
   app.innerHTML = TEMPLATE
@@ -157,6 +166,7 @@ async function main(): Promise<void> {
 
   setupShortcuts()
   setupLinkHandling(app)
+  setupCodeCopy(app)
 
   // 文件来源一：拖放
   await onDragDrop((paths) => void openPaths(paths))
@@ -212,7 +222,10 @@ function setupShortcuts(): void {
     (e) => {
       // 对话框打开期间屏蔽应用快捷键（对话框自己处理 Esc/Tab/Enter）
       if (isDialogOpen()) return
-      if (!e.ctrlKey && !e.metaKey) return
+      // Ctrl+F 在源码模式下放行给 CodeMirror 自带搜索（不拦截），IR 模式在下方分支处理
+      if (!e.ctrlKey && !e.metaKey) {
+        return
+      }
       const key = e.key.toLowerCase()
 
       if (key === 'o' && e.shiftKey) {
@@ -234,6 +247,20 @@ function setupShortcuts(): void {
         e.preventDefault()
         const tab = activeTab()
         if (tab) toggleMode(tab)
+      } else if (key === 'f') {
+        // Ctrl+F：所见即所得模式用查找条；源码模式放行给 CodeMirror 自带搜索
+        const tab = activeTab()
+        if (tab && tab.mode === 'ir') {
+          e.preventDefault()
+          toggleSearchBar()
+        }
+      } else if (key === 'f') {
+        // Ctrl+F：所见即所得模式用查找条；源码模式放行给 CodeMirror 自带搜索
+        const tab = activeTab()
+        if (tab && tab.mode === 'ir') {
+          e.preventDefault()
+          toggleSearchBar()
+        }
       } else if (key === 'w') {
         e.preventDefault()
         void closeActiveTab()
@@ -257,17 +284,206 @@ function setupShortcuts(): void {
   )
 }
 
-/** Ctrl+点击 外部链接时用系统浏览器打开，并阻止 webview 内部跳转 */
+/** 标题树按文档顺序摊平（order 即数组下标） */
+function flattenOutlineNodes(nodes: OutlineNode[]): OutlineNode[] {
+  const out: OutlineNode[] = []
+  const walk = (list: OutlineNode[]) => {
+    for (const n of list) {
+      out.push(n)
+      walk(n.children)
+    }
+  }
+  walk(nodes)
+  return out
+}
+
+/** 链接分流：外链 → 浏览器、锚点 → 标题跳转、相对路径 → 本地文件；返回是否已接管 */
+function dispatchLinkHref(href: string): boolean {
+  if (/^(https?:|mailto:)/i.test(href)) {
+    void openExternal(href)
+    return true
+  }
+  if (href.startsWith('#')) {
+    jumpToAnchor(null, href)
+    return true
+  }
+  if (/^(data:|blob:|asset\.localhost|tauri:|about:|\/)/i.test(href)) return false
+  const tab = activeTab()
+  if (!isTauri || !tab?.baseDir) return false
+  const path = joinPath(tab.baseDir, decodeURIComponent(href.split('#')[0]))
+  if (MD_EXT.test(path)) {
+    void openPath(path)
+  } else {
+    void openLocal(path)
+  }
+  return true
+}
+
+/** 链接/任务列表/代码块复制的编辑器内点击委托 */
 function setupLinkHandling(root: HTMLElement): void {
+  // 任务项 checkbox：mousedown 捕获阶段记录原始状态（此时任何激活翻转都未发生）
+  let taskClick: { input: HTMLInputElement; before: boolean } | null = null
+  root.addEventListener(
+    'mousedown',
+    (e) => {
+      const cb = (e.target as HTMLElement).closest?.<HTMLInputElement>('input[type=checkbox]')
+      taskClick = cb && cb.closest('li.vditor-task') ? { input: cb, before: cb.checked } : null
+    },
+    true,
+  )
+
   root.addEventListener('click', (e) => {
-    const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]')
+    const target = e.target as HTMLElement
+    // 任务列表：点击 checkbox 翻转勾选并回写源码态。
+    // 合成/真实点击的激活行为时序不一致（pre-click 可能在 dispatch 前就翻转），
+    // 因此以 mousedown 记录的原始状态为基准，preventDefault 后在 setTimeout 中
+    // 强制归位到相反状态（最后一步，确定性收敛），再经 DOM2Md 反推回写源码
+    const checkbox = target.closest<HTMLInputElement>('input[type=checkbox]')
+    if (checkbox && checkbox.closest('li.vditor-task')) {
+      e.preventDefault()
+      const before = taskClick?.input === checkbox ? taskClick.before : !checkbox.checked
+      window.setTimeout(() => {
+        const want = !before
+        if (checkbox.checked !== want) checkbox.checked = want
+        // innerHTML 序列化读 attribute，property 与 attribute 同步才能被 DOM2Md 反推
+        if (want) checkbox.setAttribute('checked', '')
+        else checkbox.removeAttribute('checked')
+        const tab = activeTab()
+        if (tab?.vditor) {
+          tab.content = tab.vditor.getValue()
+          notify()
+        }
+      }, 0)
+      return
+    }
+
+    // IR 所见即所得：链接以 span[data-type=a] 呈现（非真 <a>），URL 在 marker--link 文本里
+    const irLink = target.closest<HTMLElement>('span[data-type="a"]')
+    if (irLink) {
+      const urlEl = irLink.querySelector<HTMLElement>('.vditor-ir__marker--link')
+      const url = (urlEl?.textContent ?? '').replace(/^[<(]|[)>]$/g, '').trim()
+      if (url && dispatchLinkHref(url)) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+      return
+    }
+
+    const anchor = target.closest<HTMLAnchorElement>('a[href]')
     if (!anchor) return
     const href = anchor.getAttribute('href') ?? ''
-    if (/^https?:\/\//i.test(href)) {
+    if (!href) return
+    if (dispatchLinkHref(href)) {
       e.preventDefault()
       e.stopPropagation()
-      void openExternal(href)
     }
+  })
+}
+
+/** GFM 锚点 slug：小写、剔除标点、空白转连字符（与 lute 的 heading id 同规） */
+function gfmSlug(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}_\- ]/gu, '')
+    .replace(/\s+/g, '-')
+}
+
+/** 目录内锚点跳转：优先 lute 生成的 heading id，其次按标题文本 slug 兜底（源码模式传 cm 行号跳转） */
+function jumpToAnchor(anchor: HTMLAnchorElement | null, href: string): void {
+  const tab = activeTab()
+  if (!tab) return
+  const slug = decodeURIComponent(href.slice(1)).trim().toLowerCase()
+  if (tab.mode === 'source' && tab.cm) {
+    // 源码模式：把锚点还原成 markdown 标题文本，在源码里找该行
+    const headings = flattenOutlineNodes(parseOutline(tab.content))
+    const hit = headings.find((h) => gfmSlug(h.text) === slug)
+    if (hit) {
+      const doc = tab.cm.state.doc
+      const line = doc.line(Math.min(hit.lineNo + 1, doc.lines))
+      tab.cm.dispatch({
+        selection: { anchor: line.from },
+        effects: EditorView.scrollIntoView(line.from, { y: 'start' }),
+      })
+      tab.cm.focus()
+    }
+    return
+  }
+  if (tab.mode !== 'ir') return
+  const pre = tab.vdHost?.querySelector('.vditor-ir pre.vditor-reset')
+  if (!pre) return
+  let target: HTMLElement | null = null
+  const headings = pre.querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6')
+  for (const h of headings) {
+    if (h.id.toLowerCase() === slug) {
+      target = h
+      break
+    }
+  }
+  if (!target) {
+    for (const h of headings) {
+      // IR 渲染里标题文本带 "# " 标记前缀，slug 前先剥掉
+      if (gfmSlug((h.textContent ?? '').replace(/^#+\s*/, '')) === slug) {
+        target = h
+        break
+      }
+    }
+  }
+  target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  void anchor
+}
+
+/** 代码块 hover 复制按钮：悬浮层挂在 body，不污染编辑器 DOM（IR 的源码由 DOM 反推） */
+function setupCodeCopy(root: HTMLElement): void {
+  let btn: HTMLButtonElement | null = null
+  let hideTimer: number | undefined
+  let currentPre: HTMLElement | null = null
+
+  const ensureBtn = (): HTMLButtonElement => {
+    if (btn) return btn
+    btn = document.createElement('button')
+    btn.id = 'code-copy-btn'
+    btn.addEventListener('click', () => {
+      const code = currentPre?.querySelector('code')
+      const text = (code ?? currentPre)?.textContent ?? ''
+      void navigator.clipboard.writeText(text).then(() => {
+        btn!.textContent = t('code.copied')
+        window.setTimeout(() => {
+          if (btn) btn.textContent = t('code.copy')
+        }, 1200)
+      })
+    })
+    document.body.appendChild(btn)
+    return btn
+  }
+
+  const hide = () => {
+    hideTimer = window.setTimeout(() => {
+      btn?.remove()
+      btn = null
+      currentPre = null
+    }, 150)
+  }
+
+  root.addEventListener('mouseover', (e) => {
+    const pre = (e.target as HTMLElement).closest?.('pre')
+    if (!pre || pre.classList.contains('vditor-ir__marker--pre')) return
+    const code = pre.querySelector('code')
+    if (!code) return
+    // 排除主编辑区（其父为 ir/wysiwyg 容器本身）
+    const parent = pre.parentElement
+    if (!parent || parent.classList.contains('vditor-ir') || parent.classList.contains('vditor-wysiwyg')) return
+    window.clearTimeout(hideTimer)
+    currentPre = pre
+    const b = ensureBtn()
+    b.textContent = t('code.copy')
+    const rect = pre.getBoundingClientRect()
+    const maxRight = document.documentElement.clientWidth
+    b.style.top = `${Math.max(4, rect.top + 4)}px`
+    b.style.left = `${Math.min(rect.right - 46, maxRight - 52)}px`
+  })
+  root.addEventListener('mouseout', (e) => {
+    if ((e.target as HTMLElement).closest?.('pre')) hide()
   })
 }
 

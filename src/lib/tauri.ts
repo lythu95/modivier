@@ -57,6 +57,13 @@ export async function revealInDir(path: string): Promise<void> {
   await m.revealItemInDir(path)
 }
 
+/** 用系统默认程序打开本地文件（Markdown 之外的相对链接目标） */
+export async function openLocal(path: string): Promise<void> {
+  if (!isTauri) return
+  const m = await import('@tauri-apps/plugin-opener')
+  await m.openPath(path)
+}
+
 /** 监听单实例插件转发的“再次打开文件”事件 */
 export async function onOpenFiles(cb: (paths: string[]) => void): Promise<void> {
   if (!isTauri) return
