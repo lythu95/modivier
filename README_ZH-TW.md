@@ -11,7 +11,7 @@
 [![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
 [![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
 [![Platform](https://img.shields.io/badge/macOS-10.13%2B-000000?logo=apple&logoColor=fff)](https://www.apple.com/macos)
-[![Installer](https://img.shields.io/badge/installer-%7E5MB-brightgreen)](../../releases)
+[![Installer](https://img.shields.io/badge/installer-%7E5.5MB-brightgreen)](../../releases)
 
 [简体中文](./README.md) ｜ **繁體中文** ｜ [English](./README_EN.md) ｜ [日本語](./README_JA.md)
 
@@ -21,7 +21,7 @@
 
 一款輕量、快速、開箱即用的 Markdown 閱讀與編輯器：雙擊即看、即點即改，涵蓋 Windows / macOS / Linux。
 
-以 [Tauri 2](https://v2.tauri.app) 建置，主打「夠輕、夠快、夠簡單」：冷啟動約 0.5 秒、安裝包約 5MB、記憶體占用約 80MB，只保留閱讀與最基礎的編輯能力。
+以 [Tauri 2](https://v2.tauri.app) 建置，主打「夠輕、夠快、夠簡單」：冷啟動約 0.5 秒、安裝包約 5.5MB、記憶體占用約 80MB，只保留閱讀與最基礎的編輯能力。
 
 <div align="center">
   <table><tr>
@@ -47,12 +47,61 @@
 - **連結點擊**：外部連結走系統瀏覽器，文內 `#錨點` 跳轉到對應標題，相對路徑連結在應用內開啟（Markdown 開新分頁，其它檔案交系統預設程式）；原始碼模式同樣支援
 - **任務清單**：直接點擊勾選/取消，狀態回寫原始碼隨文件保存
 - **程式碼複製**：懸停程式碼區塊右上角一鍵複製
+- **公式與圖表**（資源內建、離線可用、按需載入）：`$...<div align="center">
+
+<img src="src-tauri/icons/icon.png" width="88" alt="MoDiViEr" />
+
+# MoDiViEr
+
+**MarkDown Viewer and Editor —— 參考 Typora 的輕量 Markdown 閱讀與編輯器**
+
+[![Release](https://img.shields.io/github/v/release/lythu95/modivier)](https://github.com/lythu95/modivier/releases)
+[![License](https://img.shields.io/github/license/lythu95/modivier)](./LICENSE)
+[![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
+[![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
+[![Platform](https://img.shields.io/badge/macOS-10.13%2B-000000?logo=apple&logoColor=fff)](https://www.apple.com/macos)
+[![Installer](https://img.shields.io/badge/installer-%7E5.5MB-brightgreen)](../../releases)
+
+[简体中文](./README.md) ｜ **繁體中文** ｜ [English](./README_EN.md) ｜ [日本語](./README_JA.md)
+
+</div>
+
+**MoDiViEr**（讀作 modifier）—— MarkDown Viewer and Editor
+
+一款輕量、快速、開箱即用的 Markdown 閱讀與編輯器：雙擊即看、即點即改，涵蓋 Windows / macOS / Linux。
+
+以 [Tauri 2](https://v2.tauri.app) 建置，主打「夠輕、夠快、夠簡單」：冷啟動約 0.5 秒、安裝包約 5.5MB、記憶體占用約 80MB，只保留閱讀與最基礎的編輯能力。
+
+<div align="center">
+  <table><tr>
+    <td align="center"><img src="docs/homepage.png" width="420" alt="主頁" /><br/><sub>主頁</sub></td>
+    <td align="center"><img src="docs/screenshot.png" width="420" alt="編輯器" /><br/><sub>編輯器</sub></td>
+  </tr></table>
+</div>
+
+## 為什麼做這個
+
+- Typora 開始收費；
+- 用 VSCode 開啟單一 `.md` 檔案太重，啟動慢，且大量功能在這個情境下用不上；
+- 目標：像記事本一樣簡單直接的 Markdown 工具——**看和改**，其他都不要（無列印、無雲端同步、無外掛系統）。
+
+## 功能
+
+- **所見即所得編輯**（Vditor 即時渲染模式，行為最接近 Typora：游標所在區塊顯示原始碼，其餘渲染成稿）
+- **原始碼模式**（CodeMirror 6，`Ctrl+/` 與所見即所得雙向切換，內容自動同步）
+- **大綱檢視**（左側標題樹，階層摺疊/展開，點擊跳轉；預設展開，可收合為窄條或 `Ctrl+Shift+O` 切換）
+- **多分頁**（拖入檔案、`Ctrl+O`、`Ctrl+N`、中鍵/Ctrl+W 關閉、`Ctrl+Tab` 循環、`Ctrl+1..9` 直達）
+- **狀態列**（行列位置、選取字數、全文字數；右下角 Markdown/Source 與 Light/Dark 快速切換）
+- **多國語言**（簡體中文 / 繁體中文 / English / 日本語，選單內切換，跟隨系統初始化）
+- **連結點擊**：外部連結走系統瀏覽器，文內 `#錨點` 跳轉到對應標題，相對路徑連結在應用內開啟（Markdown 開新分頁，其它檔案交系統預設程式）；原始碼模式同樣支援
+- **任務清單**：直接點擊勾選/取消，狀態回寫原始碼隨文件保存
+ / `$...$` 數學公式（KaTeX）、```mermaid``` 流程圖/時序圖、```echarts``` 圖表（JSON option）、```markmap``` 思維導圖
 - **尋找**：`Ctrl+F` 開啟尋找列（所見即所得模式在渲染文字中定位；原始碼模式用 CodeMirror 搜尋）
 - **本機圖片**：自動解析 Markdown 內的相對路徑圖片並在編輯器中顯示
 - **淺色 / 深色主題**（跟隨系統初始化，手動切換後記憶）
 - **VSCode 式全寬捲動**：內容置中排版，但整個內容區任意位置滾輪/翻頁都作用於文件
 - **編碼相容**：讀取 UTF-8 / UTF-8 BOM / GBK；儲存統一寫出 UTF-8（無 BOM）
-- **啟動效能**：編輯器大模組（Vditor/CodeMirror）按需分包、視窗先行顯示，vditor 未用渲染器（mathjax/graphviz/echarts 等）已從打包裁剪；冷啟動約 0.5~0.7s，安裝包約 5MB
+- **啟動效能**：編輯器大模組（Vditor/CodeMirror）按需分包、視窗先行顯示，vditor 冗餘渲染器（mathjax/graphviz/abcjs/smiles-drawer 等）已從打包裁剪；冷啟動約 0.5~0.7s，安裝包約 5.5MB
 - **單一實例 + 檔案關聯**：雙擊 `.md` / 右鍵「開啟方式」會聚焦已執行視窗並開新分頁。Windows：安裝包自動註冊 `.md` / `.markdown` 關聯，便攜單檔可在選單裡點「關聯 .md 檔案」一鍵註冊（目前使用者層級、免系統管理員）；macOS：將應用程式拖入「應用程式」後，於 Finder「開啟方式」中選擇即可，雙擊直達；Linux：deb / rpm 包內建 MIME 關聯
 - **視窗狀態記憶**：尺寸、位置、最大化狀態自動保存，下次啟動還原
 - 視窗拖曳檔案直接開啟；未儲存就關閉分頁/視窗時有確認提示（編輯器載入時的規範化不計為修改，原樣關閉不打擾）
@@ -74,7 +123,7 @@
 
 各平台安裝包均可從 [Releases](../../releases) 頁面取得。
 
-**Windows**：下載 `modivier_x.y.z_x64-setup.exe`（約 5MB 的 NSIS 安裝包），安裝後自動註冊 `.md` / `.markdown` 檔案關聯，在檔案總管雙擊即可開啟；免安裝可直接下載 `modivier_x.y.z_x64_portable.exe` 便攜單檔，在選單裡點「關聯 .md 檔案」註冊到系統「開啟方式」列表（目前使用者層級、免系統管理員）。Windows 10 / 11 內建 WebView2，無需額外安裝執行環境。
+**Windows**：下載 `modivier_x.y.z_x64-setup.exe`（約 5.5MB 的 NSIS 安裝包），安裝後自動註冊 `.md` / `.markdown` 檔案關聯，在檔案總管雙擊即可開啟；免安裝可直接下載 `modivier_x.y.z_x64_portable.exe` 便攜單檔，在選單裡點「關聯 .md 檔案」註冊到系統「開啟方式」列表（目前使用者層級、免系統管理員）。Windows 10 / 11 內建 WebView2，無需額外安裝執行環境。
 
 **macOS**（Intel / Apple Silicon 通用）：下載 `modivier_x.y.z_universal.dmg`，將 MoDiViEr.app 拖入「應用程式」並啟動一次；之後在 `.md` 檔案上右鍵 → 開啟方式 選擇 MoDiViEr，或在「顯示簡介」（⌘I）→ 開啟方式 → 「全部更改…」設為預設，雙擊即可開啟（已執行時在現有視窗開新分頁）。安裝包未簽署：首次開啟若被 Gatekeeper 攔截，右鍵 → 開啟 即可。免安裝情境可下載便攜單檔 `modivier_x.y.z_macos_universal_portable`，`chmod +x` 並移除 quarantine 標記（`xattr -d com.apple.quarantine modivier_*_portable`）後直接執行。
 

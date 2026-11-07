@@ -11,7 +11,7 @@
 [![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
 [![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
 [![Platform](https://img.shields.io/badge/macOS-10.13%2B-000000?logo=apple&logoColor=fff)](https://www.apple.com/macos)
-[![Installer](https://img.shields.io/badge/installer-%7E5MB-brightgreen)](../../releases)
+[![Installer](https://img.shields.io/badge/installer-%7E5.5MB-brightgreen)](../../releases)
 
 [简体中文](./README.md) ｜ [繁體中文](./README_ZH-TW.md) ｜ **English** ｜ [日本語](./README_JA.md)
 
@@ -21,7 +21,7 @@
 
 A lightweight, fast, out-of-the-box Markdown viewer & editor: double-click to read, click to edit — on Windows, macOS and Linux.
 
-Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, simple"*: cold start ≈ 0.5 s, installer ≈ 5 MB, memory ≈ 80 MB — it keeps only viewing and the most essential editing.
+Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, simple"*: cold start ≈ 0.5 s, installer ≈ 5.5 MB, memory ≈ 80 MB — it keeps only viewing and the most essential editing.
 
 <div align="center">
   <table><tr>
@@ -47,12 +47,61 @@ Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, si
 - **Link clicking**: external links open in the system browser, `#anchors` jump to headings, relative links open in-app (Markdown files as tabs, other files via the system default); works in source mode too
 - **Task lists**: click checkboxes to toggle; the state is written back into the source and saved with the document
 - **Code copy**: hover a code block and click the corner button to copy
+- **Math & diagrams** (bundled, offline, loaded on demand): `$...<div align="center">
+
+<img src="src-tauri/icons/icon.png" width="88" alt="MoDiViEr" />
+
+# MoDiViEr
+
+**MarkDown Viewer and Editor — a lightweight Markdown viewer & editor inspired by Typora**
+
+[![Release](https://img.shields.io/github/v/release/lythu95/modivier)](https://github.com/lythu95/modivier/releases)
+[![License](https://img.shields.io/github/license/lythu95/modivier)](./LICENSE)
+[![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
+[![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
+[![Platform](https://img.shields.io/badge/macOS-10.13%2B-000000?logo=apple&logoColor=fff)](https://www.apple.com/macos)
+[![Installer](https://img.shields.io/badge/installer-%7E5.5MB-brightgreen)](../../releases)
+
+[简体中文](./README.md) ｜ [繁體中文](./README_ZH-TW.md) ｜ **English** ｜ [日本語](./README_JA.md)
+
+</div>
+
+**MoDiViEr** (pronounced "modifier") — MarkDown Viewer and Editor
+
+A lightweight, fast, out-of-the-box Markdown viewer & editor: double-click to read, click to edit — on Windows, macOS and Linux.
+
+Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, simple"*: cold start ≈ 0.5 s, installer ≈ 5.5 MB, memory ≈ 80 MB — it keeps only viewing and the most essential editing.
+
+<div align="center">
+  <table><tr>
+    <td align="center"><img src="docs/homepage.png" width="420" alt="Home" /><br/><sub>Home</sub></td>
+    <td align="center"><img src="docs/screenshot.png" width="420" alt="Editor" /><br/><sub>Editor</sub></td>
+  </tr></table>
+</div>
+
+## Why
+
+- Typora went paid;
+- VSCode is overkill for opening a single `.md` file: slow startup, and most of its features go unused in this scenario;
+- The goal is a Markdown tool as straightforward as Notepad — **view and edit**, nothing else (no printing, no cloud sync, no plugin system).
+
+## Features
+
+- **WYSIWYG editing** (Vditor instant-rendering mode, the closest to Typora: the block under the cursor shows its source while everything else renders)
+- **Source mode** (CodeMirror 6, `Ctrl+/` toggles both ways, content stays in sync)
+- **Outline view** (heading tree on the left, hierarchical collapse/expand, click to jump; expanded by default, collapsible to a slim bar, `Ctrl+Shift+O`)
+- **Multiple tabs** (drag files in, `Ctrl+O`, `Ctrl+N`, middle-click / `Ctrl+W` to close, `Ctrl+Tab` to cycle, `Ctrl+1..9` to jump directly)
+- **Status bar** (line/column, selected & total character count; Markdown/Source and Light/Dark toggles at bottom right)
+- **UI languages** (简体中文 / 繁體中文 / English / 日本語, switched in the menu, follows the system on first run)
+- **Link clicking**: external links open in the system browser, `#anchors` jump to headings, relative links open in-app (Markdown files as tabs, other files via the system default); works in source mode too
+- **Task lists**: click checkboxes to toggle; the state is written back into the source and saved with the document
+ / `$...$` math (KaTeX), ```mermaid``` flowcharts & sequence diagrams, ```echarts``` charts (JSON option), ```markmap``` mind maps
 - **Find**: `Ctrl+F` opens a find bar (WYSIWYG mode searches rendered text; source mode uses CodeMirror search)
 - **Local images**: relative-path images inside the Markdown are resolved and displayed
 - **Light / dark theme** (follows the system initially, remembered after manual toggle)
 - **VSCode-style full-width scrolling**: content is centered, but scrolling anywhere in the content area scrolls the document
 - **Encoding tolerant**: reads UTF-8 / UTF-8 BOM / GBK; always saves UTF-8 (no BOM)
-- **Startup performance**: the large editor modules (Vditor/CodeMirror) are code-split and loaded on demand, the window shows first, and unused vditor renderers (mathjax/graphviz/echarts…) are trimmed from the bundle; cold start ≈ 0.5–0.7 s, installer ≈ 5 MB
+- **Startup performance**: the large editor modules (Vditor/CodeMirror) are code-split and loaded on demand, the window shows first, and redundant vditor renderers (mathjax/graphviz/abcjs/smiles-drawer…) are trimmed from the bundle; cold start ≈ 0.5–0.7 s, installer ≈ 5.5 MB
 - **Single instance + file association**: double-clicking `.md` (or "Open with") focuses the running window and opens a new tab. Windows: the installer registers `.md` / `.markdown` associations, and the portable build can register itself from the menu ("Associate .md files", per-user, no admin needed); macOS: drag the app into Applications, then pick it in Finder's "Open With" — double-click just works; Linux: deb/rpm packages ship the MIME associations
 - **Window state memory**: size, position and maximized state are saved automatically and restored on next launch
 - Drop files onto the window to open them; closing unsaved tabs/windows asks for confirmation (normalization during load doesn't count as a modification, so untouched files close silently)
@@ -74,7 +123,7 @@ Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, si
 
 Installers for all platforms are available on the [Releases](../../releases) page.
 
-**Windows**: grab `modivier_x.y.z_x64-setup.exe` (a ~5 MB NSIS installer) — it registers `.md` / `.markdown` associations, so double-clicking a Markdown file opens it right away. For a portable setup, download `modivier_x.y.z_x64_portable.exe` (single file, no install) and use the menu item "Associate .md files" to register it with the system's "Open with" list (per-user, no admin needed). Windows 10 / 11 ships WebView2 — no extra runtime required.
+**Windows**: grab `modivier_x.y.z_x64-setup.exe` (a ~5.5 MB NSIS installer) — it registers `.md` / `.markdown` associations, so double-clicking a Markdown file opens it right away. For a portable setup, download `modivier_x.y.z_x64_portable.exe` (single file, no install) and use the menu item "Associate .md files" to register it with the system's "Open with" list (per-user, no admin needed). Windows 10 / 11 ships WebView2 — no extra runtime required.
 
 **macOS** (Intel & Apple Silicon universal): download `modivier_x.y.z_universal.dmg`, drag MoDiViEr.app into Applications and launch it once; then right-click a `.md` file → Open With → MoDiViEr, or set it as the default via Get Info (⌘I) → "Open with" → "Change All…". Double-clicking now opens the file directly (a second file opens as a new tab in the running window). The bundle is unsigned: if Gatekeeper blocks the first launch, right-click → Open. For a no-install setup, grab the portable single file `modivier_x.y.z_macos_universal_portable`, run `chmod +x` and clear the quarantine flag (`xattr -d com.apple.quarantine modivier_*_portable`), then run it directly.
 

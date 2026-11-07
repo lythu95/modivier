@@ -11,7 +11,7 @@
 [![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
 [![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
 [![Platform](https://img.shields.io/badge/macOS-10.13%2B-000000?logo=apple&logoColor=fff)](https://www.apple.com/macos)
-[![Installer](https://img.shields.io/badge/installer-%7E5MB-brightgreen)](../../releases)
+[![Installer](https://img.shields.io/badge/installer-%7E5.5MB-brightgreen)](../../releases)
 
 [简体中文](./README.md) ｜ [繁體中文](./README_ZH-TW.md) ｜ [English](./README_EN.md) ｜ **日本語**
 
@@ -21,7 +21,7 @@
 
 軽量・高速・すぐに使える Markdown ビューア＆エディタ：ダブルクリックで開いて、そのまま編集。Windows / macOS / Linux に対応。
 
-[Tauri 2](https://v2.tauri.app) ベース。「軽く・速く・シンプル」を主眼に置いています：コールドスタート約 0.5 秒、インストーラー約 5MB、メモリ使用量約 80MB。表示とごく基本的な編集だけを残しました。
+[Tauri 2](https://v2.tauri.app) ベース。「軽く・速く・シンプル」を主眼に置いています：コールドスタート約 0.5 秒、インストーラー約 5.5MB、メモリ使用量約 80MB。表示とごく基本的な編集だけを残しました。
 
 <div align="center">
   <table><tr>
@@ -47,12 +47,61 @@
 - **リンククリック**：外部リンクはシステムブラウザで、文内 `#アンカー` は見出しへジャンプ、相対パスはアプリ内で開く（Markdown は新規タブ、その他はシステム既定アプリ）。ソースモードも対応
 - **タスクリスト**：チェックボックスをクリックして切替、状態はソースに書き戻され保存されます
 - **コードコピー**：コードブロックにホバーすると右上にコピーボタン
+- **数式と図表**（リソース同梱・オフライン可・必要時に読込）：`$...<div align="center">
+
+<img src="src-tauri/icons/icon.png" width="88" alt="MoDiViEr" />
+
+# MoDiViEr
+
+**MarkDown Viewer and Editor — Typora を参考にした軽量 Markdown ビューア＆エディタ**
+
+[![Release](https://img.shields.io/github/v/release/lythu95/modivier)](https://github.com/lythu95/modivier/releases)
+[![License](https://img.shields.io/github/license/lythu95/modivier)](./LICENSE)
+[![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=000)](https://v2.tauri.app)
+[![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows11&logoColor=fff)](https://www.microsoft.com/windows)
+[![Platform](https://img.shields.io/badge/macOS-10.13%2B-000000?logo=apple&logoColor=fff)](https://www.apple.com/macos)
+[![Installer](https://img.shields.io/badge/installer-%7E5.5MB-brightgreen)](../../releases)
+
+[简体中文](./README.md) ｜ [繁體中文](./README_ZH-TW.md) ｜ [English](./README_EN.md) ｜ **日本語**
+
+</div>
+
+**MoDiViEr**（読み方は modifier）—— MarkDown Viewer and Editor
+
+軽量・高速・すぐに使える Markdown ビューア＆エディタ：ダブルクリックで開いて、そのまま編集。Windows / macOS / Linux に対応。
+
+[Tauri 2](https://v2.tauri.app) ベース。「軽く・速く・シンプル」を主眼に置いています：コールドスタート約 0.5 秒、インストーラー約 5.5MB、メモリ使用量約 80MB。表示とごく基本的な編集だけを残しました。
+
+<div align="center">
+  <table><tr>
+    <td align="center"><img src="docs/homepage.png" width="420" alt="ホーム" /><br/><sub>ホーム</sub></td>
+    <td align="center"><img src="docs/screenshot.png" width="420" alt="エディター" /><br/><sub>エディター</sub></td>
+  </tr></table>
+</div>
+
+## なぜ作ったのか
+
+- Typora は有料化しました。
+- VSCode で単一の `.md` を開くには重すぎます。起動が遅く、この用途では使わない機能が大半です。
+- 目標：メモ帳のようにシンプルで直接的な Markdown ツール。**見る・直す**だけ。それ以外は何も入れない（印刷なし、クラウド同期なし、プラグイン機構なし）。
+
+## 機能
+
+- **WYSIWYG 編集**（Vditor インスタントレンダリングモード。Typora に最も近い挙動：カーソル位置のブロックだけソース表示、其余は描画）
+- **ソースモード**（CodeMirror 6。`Ctrl+/` で WYSIWYG と双方向切替、内容は自動同期）
+- **アウトライン表示**（左側の見出しツリー、階層の折りたたみ/展開、クリックでジャンプ。デフォルトで展開、細幅に畳み可能、`Ctrl+Shift+O` で切替）
+- **マルチタブ**（ファイルのドロップ、`Ctrl+O`、`Ctrl+N`、中クリック/`Ctrl+W` で閉じる、`Ctrl+Tab` で巡回、`Ctrl+1..9` で直接切替）
+- **ステータスバー**（行列位置、選択文字数、全文文字数。右下に Markdown/Source と Light/Dark の切替）
+- **多言語対応**（簡体字中国語 / 繁體中文 / English / 日本語。メニューから切替、初回はシステムに追従）
+- **リンククリック**：外部リンクはシステムブラウザで、文内 `#アンカー` は見出しへジャンプ、相対パスはアプリ内で開く（Markdown は新規タブ、その他はシステム既定アプリ）。ソースモードも対応
+- **タスクリスト**：チェックボックスをクリックして切替、状態はソースに書き戻され保存されます
+ / `$...$` 数式（KaTeX）、```mermaid``` フローチャート/シーケンス図、```echarts``` グラフ（JSON option）、```markmap``` マインドマップ
 - **検索**：`Ctrl+F` で検索バーを開く（WYSIWYG モードは描画テキストを検索、ソースモードは CodeMirror 検索）
 - **ローカル画像**：Markdown 内の相対パス画像を自動解決して表示
 - **ライト / ダークテーマ**（初回はシステムに追従、手動切替後は記憶）
 - **VSCode 式全幅スクロール**：本文は中央寄せですが、コンテンツ領域のどこでスクロール/ページ送りしても文書に作用
 - **エンコーディング互換**：UTF-8 / UTF-8 BOM / GBK を読込。保存は UTF-8（BOM なし）で統一
-- **起動性能**：エディターの大型モジュール（Vditor/CodeMirror）は必要時に分割読込、ウィンドウを先に表示、vditor の未使用レンダラー（mathjax/graphviz/echarts 等）はパッケージから除外。コールドスタート約 0.5〜0.7 秒、インストーラー約 5MB
+- **起動性能**：エディターの大型モジュール（Vditor/CodeMirror）は必要時に分割読込、ウィンドウを先に表示、vditor の未使用レンダラー（mathjax/graphviz/abcjs/smiles-drawer 等）はパッケージから除外。コールドスタート約 0.5〜0.7 秒、インストーラー約 5.5MB
 - **単一インスタンス + ファイル関連付け**：`.md` のダブルクリック/「プログラムから開く」で、既存ウィンドウにフォーカスして新規タブを開きます。Windows：インストーラーが `.md` / `.markdown` を自動登録、ポータブル版はメニューの「.md ファイルを関連付け」から一発登録（現在のユーザー単位、管理者権限不要）。macOS：アプリを「アプリケーション」に入れた後、Finder の「このアプリケーションで開く」から選択すればダブルクリックで開けます。Linux：deb / rpm が MIME 関連付けを同梱
 - **ウィンドウ状態の記憶**：サイズ・位置・最大化状態を自動保存し、次回起動時に復元
 - ウィンドウへのファイルドロップで直接開く。未保存のタブ/ウィンドウを閉じる際は確認します（読み込み時の正規化は変更とみなさないので、手を加えていないファイルはそのまま閉じます）
@@ -74,7 +123,7 @@
 
 各プラットフォームのインストーラーは [Releases](../../releases) ページから入手できます。
 
-**Windows**：`modivier_x.y.z_x64-setup.exe`（約 5MB の NSIS インストーラー）をダウンロード。インストール時に `.md` / `.markdown` の関連付けが自動登録され、ダブルクリックするだけで開けます。インストール不要で使う場合は `modivier_x.y.z_x64_portable.exe`（ポータブル単体ファイル）をダウンロードし、メニューの「.md ファイルを関連付け」からシステムの「プログラムから開く」に登録できます（現在のユーザー単位、管理者権限不要）。Windows 10 / 11 には WebView2 が内蔵されており、追加のランタイムは不要です。
+**Windows**：`modivier_x.y.z_x64-setup.exe`（約 5.5MB の NSIS インストーラー）をダウンロード。インストール時に `.md` / `.markdown` の関連付けが自動登録され、ダブルクリックするだけで開けます。インストール不要で使う場合は `modivier_x.y.z_x64_portable.exe`（ポータブル単体ファイル）をダウンロードし、メニューの「.md ファイルを関連付け」からシステムの「プログラムから開く」に登録できます（現在のユーザー単位、管理者権限不要）。Windows 10 / 11 には WebView2 が内蔵されており、追加のランタイムは不要です。
 
 **macOS**（Intel / Apple Silicon 汎用）：`modivier_x.y.z_universal.dmg` をダウンロードし、MoDiViEr.app を「アプリケーション」にドラッグして一度起動。その後 `.md` ファイルを右クリック → 「このアプリケーションで開く」で選ぶか、「情報を見る」（⌘I）→ 「このアプリケーションで開く」→ 「すべてを変更…」でデフォルトに設定すると、ダブルクリックで直接開けます（起動済みなら既存ウィンドウに新規タブで開きます）。パッケージは未署名のため、初回起動時に Gatekeeper にブロックされたら右クリック → 「開く」で起動できます。インストール不要で使う場合はポータブル単体ファイル `modivier_x.y.z_macos_universal_portable` をダウンロードし、`chmod +x` と quarantine 解除（`xattr -d com.apple.quarantine modivier_*_portable`）の後、直接実行できます。
 

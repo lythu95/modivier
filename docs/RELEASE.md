@@ -32,7 +32,7 @@
 
 | 平台 | 文件名 | 体积参考 | 版本号来源 |
 | --- | --- | --- | --- |
-| Windows 安装包 | `modivier_<版本>_x64-setup.exe` | ~5MB | tauri.conf.json |
+| Windows 安装包 | `modivier_<版本>_x64-setup.exe` | ~5.4MB | tauri.conf.json |
 | Windows 便携单文件 | `modivier_<tag>_x64_portable.exe` | ~10MB | **tag**（workflow 里改名） |
 | macOS 安装包 | `modivier_<版本>_universal.dmg` | ~10.6MB | tauri.conf.json |
 | macOS 便携单文件 | `modivier_<tag>_macos_universal_portable` | ~10MB | **tag**（workflow 里改名） |
