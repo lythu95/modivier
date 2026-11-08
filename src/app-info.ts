@@ -1,4 +1,4 @@
 /** 应用品牌信息。APP_VERSION 需与 package.json / tauri.conf.json 保持同步 */
 export const APP_NAME = 'MoDiViEr'
 export const APP_TAGLINE = 'MarkDown Viewer and Editor'
-export const APP_VERSION = '0.2.1'
+export const APP_VERSION = '0.2.2'
