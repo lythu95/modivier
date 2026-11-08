@@ -165,13 +165,10 @@ if (existing.ok && existing.body?.id) {
   console.log(`  Gitee Release 已创建（id=${rid}）`);
 }
 
-// 现有附件清单（按名字 + 大小判断是否需要补传）
+// 现有附件清单：Gitee 附件 API 的 size 字段恒为 null，只能按文件名判断是否需要补传
 const cur = await jfetch(gt(`/releases/${rid}`));
-const giteeAssets = new Map((cur.body.assets ?? []).map((a) => [a.name, a.size]));
-const missing = ghAssets.filter((a) => giteeAssets.get(a.name) !== a.size);
-const mismatch = missing.filter((a) => giteeAssets.has(a.name));
-if (mismatch.length) console.log(`  ⚠️ 以下附件在 Gitee 上大小不符，建议手动到 Gitee 删除后重跑本脚本: ${mismatch.map((a) => a.name).join('、')}`);
-const toUpload = missing.filter((a) => !giteeAssets.has(a.name));
+const giteeNames = new Set((cur.body.assets ?? []).map((a) => a.name));
+const toUpload = ghAssets.filter((a) => !giteeNames.has(a.name));
 if (toUpload.length === 0) {
   console.log('  Gitee 附件已齐全，无需上传');
 } else {
@@ -210,17 +207,22 @@ if (toUpload.length === 0) {
   }
 }
 
-// ── 4. 核对 ──────────────────────────────────────────────────────────────────
+// ── 4. 核对：逐个 HEAD 下载链接取真实文件大小（Gitee 列表 API 无 size） ────────
 console.log('[4/4] 核对 Gitee 附件清单 ...');
-const final = await jfetch(gt(`/releases/${rid}`));
-const finalMap = new Map((final.body.assets ?? []).map((a) => [a.name, a.size]));
 let allOk = true;
 for (const a of ghAssets) {
-  const ok = finalMap.get(a.name) === a.size;
+  let ok = false;
+  try {
+    const res = await fetch(
+      `https://gitee.com/${GITEE_REPO}/releases/download/${tag}/${encodeURIComponent(a.name)}`,
+      { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(30_000) },
+    );
+    ok = res.ok && Number(res.headers.get('content-length')) === a.size;
+  } catch { /* fallthrough */ }
   if (!ok) allOk = false;
   console.log(`  ${ok ? '✓' : '✗'} ${a.name} (${(a.size / 1024 / 1024).toFixed(1)}MB)`);
 }
 console.log(allOk
-  ? `✅ Gitee Release 同步完成: https://gitee.com/lythu/modivier/releases/tag/${tag}`
-  : '⚠️ 附件仍有缺失，请检查上方 ✗ 项后重跑本脚本');
+  ? `Gitee Release 同步完成: https://gitee.com/lythu/modivier/releases/tag/${tag}`
+  : '⚠️ 附件仍有缺失或大小不符，请检查上方 ✗ 项后重跑本脚本');
 process.exit(allOk ? 0 : 1);
