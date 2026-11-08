@@ -167,8 +167,28 @@ if (existing.ok && existing.body?.id) {
 
 // 现有附件清单：Gitee 附件 API 的 size 字段恒为 null，只能按文件名判断是否需要补传
 const cur = await jfetch(gt(`/releases/${rid}`));
-const giteeNames = new Set((cur.body.assets ?? []).map((a) => a.name));
-const toUpload = ghAssets.filter((a) => !giteeNames.has(a.name));
+const assets = cur.body.assets ?? [];
+
+// 同名附件去重：attach_files 不覆盖同名文件，历史残留（如 CI 时代重复上传）会累积。
+// 保留每个文件名最早的一个，删除其余（删除接口对 404/405 容错，不影响后续流程）
+const seenNames = new Set();
+const dupIds = [];
+for (const a of assets) {
+  if (seenNames.has(a.name)) dupIds.push(a.id);
+  else seenNames.add(a.name);
+}
+if (dupIds.length) {
+  console.log(`  发现 ${dupIds.length} 个重复同名附件，清理（同名保留一份）...`);
+  for (const id of dupIds) {
+    const del = await jfetch(`/releases/${rid}/attach_files/${id}`, { method: 'DELETE' });
+    console.log(`    删除附件 ${id}: HTTP ${del.status}${del.ok ? '' : '（如 404/405 表示接口不可用，请到 Gitee 网页手动删除同名附件）'}`);
+  }
+}
+
+// 有删除动作时重新拉取最新附件清单
+const cur2 = dupIds.length ? await jfetch(gt(`/releases/${rid}`)) : cur;
+const giteeNames2 = new Set((cur2.body.assets ?? []).map((a) => a.name));
+const toUpload = ghAssets.filter((a) => !giteeNames2.has(a.name));
 if (toUpload.length === 0) {
   console.log('  Gitee 附件已齐全，无需上传');
 } else {
