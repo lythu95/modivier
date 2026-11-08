@@ -1,7 +1,8 @@
 # 发布指南（维护者向）
 
-> 发布全流程已由 [.github/workflows/release.yml](../.github/workflows/release.yml) 自动化：
-> **推 tag 即完成「三平台编译 + GitHub / Gitee 双平台 Release」**，约 10~20 分钟。
+> 发布流程分两段：CI（[.github/workflows/release.yml](../.github/workflows/release.yml)）
+> **推 tag 即完成「三平台编译 + GitHub Release」**，约 10~20 分钟；
+> Gitee 同步在**本机一条命令**完成（`node scripts/sync-gitee.mjs <tag>`，约 1~3 分钟，原因见踩坑 #9）。
 > 本文记录操作步骤、踩坑记录与排查方法。首次跑通 v0.1.0 用了 10 次运行迭代，坑都在这里。
 
 ## 快速发版（Happy Path）
@@ -20,13 +21,14 @@
    git push gitee vX.y.z
    ```
 
-4. 到 GitHub → Actions 看运行，全绿即发布完成，用下面的命令验证双平台资产。
-5. 如产物命名/组合有变化，同步更新四份 README 的「下载与安装」章节。
+4. 到 GitHub → Actions 看运行，全绿即 GitHub Release 完成（CI 不再同步 Gitee）。
+5. **本机同步 Gitee**：`node scripts/sync-gitee.mjs vX.y.z`（幂等可续传，中断/部分失败重跑即可）。
+6. 用下面的命令验证双平台资产；如产物命名/组合有变化，同步更新四份 README 的「下载与安装」章节。
 
 **两条铁律**：
 
 - tag 里带 `-`（如 `v0.2.0-rc.1`）会自动标记为 prerelease（GitHub 与 Gitee 都会）；正式版 tag 不要带 `-`。
-- tag 必须同时推 Gitee：Gitee Release 需要 tag 关联 commit。CI 里有兜底推 tag（见踩坑 #3），但不要依赖它。
+- tag 必须同时推 Gitee：Gitee Release 需要 tag 关联 commit。本地同步脚本里有兜底推 tag（见踩坑 #3），但不要依赖它。
 
 ## 产物对照表
 
@@ -52,8 +54,7 @@ Windows=nsis、macOS=dmg（universal 双架构）、Linux=deb+rpm。
 2. **release 任务**（仅 tag 触发）：
    - 下载全部 artifact 并**摊平到 `dist/` 根目录**（见踩坑 #5）
    - GitHub Release：`softprops/action-gh-release@v3`（按 tag 复用/更新，重跑幂等；tag 带 `-` 自动 prerelease）
-   - Gitee Release：自研 bash 步骤——删同 tag 旧 Release → 兜底 git push tag → 建 Release → 逐个 `attach_files` 上传 `dist/*`（删旧建新，天然幂等）
-   - 未配置 `GITEE_TOKEN` secret 时自动跳过 Gitee 同步并输出告警
+   - Gitee 同步已移出 CI（海外 runner 到 Gitee 上传过慢，见踩坑 #9），改由本机执行 `scripts/sync-gitee.mjs`：读 GitHub 产物清单 → 下载（API octet-stream + curl 断点续传）→ Gitee 建 Release / 补传缺失附件（幂等、并发 3、自动重试）→ 两侧清单核对
 3. Gitee Release 页面自动附带的源码 `zip` / `tar.gz` 是 Gitee 官方行为，不是错误。
 
 ## 踩坑记录（现象 → 根因 → 解决）
@@ -104,17 +105,27 @@ Windows=nsis、macOS=dmg（universal 双架构）、Linux=deb+rpm。
 - **根因**：命令行参数的编码处理在某处按窄字符截断/转码。
 - **状态**：待修复（不影响发布流程，影响"打开方式"传含中文路径的场景）。
 
+### 9. CI 里同步 Gitee 极慢（1h14m），已移出 CI
+
+- **现象**：release job 其余步骤都是秒级/10s 级，`Sync Release to Gitee` 单步 1h15m（7 个附件 ~61MB 全部 201 成功，但总时长感人）。
+- **根因**：GitHub 托管 runner 在海外，到 Gitee 的上传路由只有十几 KB/s，且逐个串行上传；并行化只能线性缓解、还可能触发限流，Actions 内无解。
+- **解决**：Gitee 同步移出 CI，改为本机脚本 `scripts/sync-gitee.mjs <tag>`（国内到 Gitee 上传很快）：幂等补传（按附件名+大小判断缺失）、curl 断点续传、上传并发 3 + 自动重试、结束核对清单。附件 multipart 字段名 `file`（踩坑 #1）与 `target_commitish` 必传（踩坑 #2）沿用。
+- **附带坑（凭据侧）**：`git credential fill` 拿到的是 git 密码（能 push 不能调 API），API 必须用 PAT——401 "Access token does not exist" 就是 token 不对。
+- **附带坑（下载侧）**：本机/国内网络下 `github.com` 的 release 下载端点经常 504，而 `api.github.com` 的 octet-stream（`GET /releases/assets/{id}`，Accept: application/octet-stream）直连可用——脚本已默认走该路线；它计入 GitHub API 匿名限额（60/小时），量大时配置 `GITHUB_TOKEN` 环境变量提升到 5000。
+
 ## 失败排查手册
 
 **定位**：GitHub → Actions → 看红掉的 job/step。三平台 build 失败多为代码/依赖问题；release 任务失败多为双平台 API 问题。日志需登录网页查看（API 拉日志要 admin token，匿名 403）。
 
-**重跑**：修完代码提交后强制移 tag 即可重跑（GitHub 会复用 Release 更新资产；Gitee 会删旧建新）：
+**重跑**：修完代码提交后强制移 tag 重推即可（GitHub 复用 Release 更新资产）：
 
 ```bash
 git tag -f vX.y.z
 git push -f github vX.y.z
 git push -f gitee vX.y.z
 ```
+
+Gitee 侧不用重跑 CI：直接重跑 `node scripts/sync-gitee.mjs vX.y.z`，已上传的附件自动跳过。
 
 **发布状态检查**（匿名可用的验证命令）：
 
@@ -135,6 +146,6 @@ curl -s "https://api.github.com/repos/lythu95/modivier/actions/runs?per_page=3" 
 | --- | --- |
 | GitHub 仓库 | `lythu95/modivier`（默认分支 main） |
 | Gitee 仓库 | `lythu/modivier`（默认分支 main，注意 owner 与 GitHub 不同） |
-| Gitee token secret | 仓库 Settings → Secrets → `GITEE_TOKEN`（需 repo 权限） |
+| Gitee token | PAT（gitee.com → 设置 → 私人令牌，需 projects 权限；与 CI 时代 GitHub Secrets 里的 `GITEE_TOKEN` 同一份即可）。环境变量 `GITEE_TOKEN` 或脚本 `--token` 参数。**注意**：git push 用的账号密码存在凭据管理器里，但它不能调 API（401 Access token does not exist） |
 | 手动测试 | workflow 支持 `workflow_dispatch`（只编译不发布） |
 | 测试标签惯例 | `vX.Y.Z-test.N`（自动 prerelease，验证后删除） |

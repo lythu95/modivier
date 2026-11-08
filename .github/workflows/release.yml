@@ -113,12 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      HAS_GITEE_TOKEN: ${{ secrets.GITEE_TOKEN != '' }}
     steps:
-      - name: Checkout (need tag object for pushing to Gitee)
-        uses: actions/checkout@v7
-
       - name: Download build artifacts
         uses: actions/download-artifact@v8
         with:
@@ -134,7 +129,7 @@ jobs:
           ls -la dist/
 
       # GitHub 侧用 softprops（按 tag 复用/更新 Release，重跑幂等）；
-      # release-sync 的 GitHub 路径对已存在的 Release 会报 422，只保留其 Gitee 同步
+      # 第三方 release-sync 已弃用（其 GitHub 路径对已存在 Release 报 422），Gitee 同步见 scripts/sync-gitee.mjs
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         env:
@@ -155,58 +150,7 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: dist/*
 
-      # Gitee 官方 API 实现（release-sync 对已有 Release 不幂等且重建 tag 报 400）：
-      # 删同 tag 旧 Release（Gitee 会级联删其自动创建的 tag）→ 建 Release（tag 不存在时按 main 自动重建）→ 上传 dist 下全部产物
-      - name: Sync Release to Gitee
-        if: env.HAS_GITEE_TOKEN == 'true'
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITEE_TAG: ${{ github.ref_name }}
-          GITEE_SHA: ${{ github.sha }}
-          GITEE_PRERELEASE: ${{ contains(github.ref_name, '-') }}
-          GITEE_BODY: |
-            **MoDiViEr —— MarkDown Viewer and Editor**
-
-            | 平台 | 安装包 |
-            | --- | --- |
-            | Windows | `modivier_*_x64-setup.exe`（安装包）/ `modivier_*_x64_portable.exe`（便携单文件，免安装） |
-            | macOS | `modivier_*.dmg`（Intel / Apple Silicon 通用）/ `modivier_*_macos_universal_portable`（便携单文件） |
-            | Linux | `modivier_*.deb`（Debian/Ubuntu）、`modivier-*.rpm`（Fedora/openSUSE）/ `modivier_*_linux_x64_portable`（便携单文件，免安装） |
-
-            > macOS 安装包未签名，首次打开需右键 → 打开。便携单文件下载后需 `chmod +x`（Linux 可直接运行；macOS 另需去除 quarantine 标记）。运行便携版仍需系统 WebView 运行时（详见 README）。
-        run: |
-          set -e
-          API="https://gitee.com/api/v5/repos/lythu/modivier"
-          get_id () { node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).id||'')}catch(e){console.log('')}})"; }
-
-          RID=$(curl -s "$API/releases/tags/$GITEE_TAG?access_token=$GITEE_TOKEN" | get_id)
-          if [ -n "$RID" ]; then
-            echo "Deleting existing Gitee release $RID"
-            curl -sf -X DELETE "$API/releases/$RID?access_token=$GITEE_TOKEN"
-          fi
-
-          # 确保 Gitee 侧标签存在（正常发布时应同时把 tag 推到两个远程，这里兜底；失败不阻断）
-          git push "https://oauth2:$GITEE_TOKEN@gitee.com/lythu/modivier.git" "HEAD:refs/tags/$GITEE_TAG" --force \
-            || echo "::warning::tag 推送到 Gitee 失败，Release 将不关联 tag"
-
-          PAYLOAD=$(node -e "console.log(JSON.stringify({access_token:process.env.GITEE_TOKEN,tag_name:process.env.GITEE_TAG,name:'MoDiViEr '+process.env.GITEE_TAG,body:process.env.GITEE_BODY,prerelease:process.env.GITEE_PRERELEASE==='true',target_commitish:process.env.GITEE_SHA}))")
-          RID=$(echo "$PAYLOAD" | curl -sf -X POST "$API/releases" -H "Content-Type: application/json" -d @- | get_id)
-          [ -n "$RID" ] || { echo "Gitee release creation failed"; exit 1; }
-          echo "Gitee release id: $RID"
-
-          FAIL=0
-          for f in dist/*; do
-            CODE=$(curl -s -o /tmp/attach_resp.json -w "%{http_code}" -X POST "$API/releases/$RID/attach_files" -F "access_token=$GITEE_TOKEN" -F "file=@$f")
-            case "$CODE" in
-              2*) echo "Uploaded $(basename "$f") ($CODE)" ;;
-              *)
-                echo "Upload FAILED ($CODE): $(head -c 300 /tmp/attach_resp.json 2>/dev/null)"
-                FAIL=1 ;;
-            esac
-          done
-          [ "$FAIL" = "0" ] || exit 1
-          echo "Gitee release synced: https://gitee.com/lythu/modivier/releases/tag/$GITEE_TAG"
-
-      - name: Gitee sync skipped notice
-        if: env.HAS_GITEE_TOKEN != 'true'
-        run: echo "::warning::未配置 GITEE_TOKEN，已跳过 Gitee Release 同步。请在仓库 Settings → Secrets and variables → Actions 添加 GITEE_TOKEN（Gitee 个人令牌，需 repo 权限）后重新推送标签或重跑 Release。"
+      # Gitee Release 同步已移出 CI：托管 runner（海外）到 Gitee 上传路由极慢（~60MB 实测 1h15m，见 RELEASE.md 踩坑 #9）。
+      # 发版后在本机执行：node scripts/sync-gitee.mjs <tag>（国内网络到 Gitee 很快，幂等可续传）
+      - name: Gitee sync moved out of CI
+        run: echo "Gitee Release 请在本机同步：node scripts/sync-gitee.mjs ${{ github.ref_name }}"
