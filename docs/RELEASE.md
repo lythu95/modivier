@@ -113,6 +113,12 @@ Windows=nsis、macOS=dmg（universal 双架构）、Linux=deb+rpm。
 - **附带坑（凭据侧）**：`git credential fill` 拿到的是 git 密码（能 push 不能调 API），API 必须用 PAT——401 "Access token does not exist" 就是 token 不对。
 - **附带坑（下载侧）**：本机/国内网络下 `github.com` 的 release 下载端点经常 504，而 `api.github.com` 的 octet-stream（`GET /releases/assets/{id}`，Accept: application/octet-stream）直连可用——脚本已默认走该路线；它计入 GitHub API 匿名限额（60/小时），量大时配置 `GITHUB_TOKEN` 环境变量提升到 5000。
 
+### 10. echarts 渲染报 EvalError：CSP 需要放开 unsafe-eval
+
+- **现象**：````echarts` 代码块渲染为 `vditor-reset--error`，错误内容为 `EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not allowed`；markmap/mermaid/katex 均正常。
+- **根因**：echarts 内部存在字符串求值路径，被 Tauri 默认 CSP（`script-src 'self' 'wasm-unsafe-eval'`）拦截。KaTeX/mermaid 不触发该路径，所以只有 echarts 报错。
+- **解决**：tauri.conf.json 的 CSP `script-src` 追加 `'unsafe-eval'`。应用对 Markdown 渲染开了 sanitize、内容以本地文件为主，风险可控（VSCode 的 webview 亦如此）。
+
 ## 失败排查手册
 
 **定位**：GitHub → Actions → 看红掉的 job/step。三平台 build 失败多为代码/依赖问题；release 任务失败多为双平台 API 问题。日志需登录网页查看（API 拉日志要 admin token，匿名 403）。

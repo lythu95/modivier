@@ -104,7 +104,8 @@ Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, si
 - **Startup performance**: the large editor modules (Vditor/CodeMirror) are code-split and loaded on demand, the window shows first, and redundant vditor renderers (mathjax/graphviz/abcjs/smiles-drawer…) are trimmed from the bundle; cold start ≈ 0.5–0.7 s, installer ≈ 5.5 MB
 - **Single instance + file association**: double-clicking `.md` (or "Open with") focuses the running window and opens a new tab. Windows: the installer registers `.md` / `.markdown` associations, and the portable build can register itself from the menu ("Associate .md files", per-user, no admin needed); macOS: drag the app into Applications, then pick it in Finder's "Open With" — double-click just works; Linux: deb/rpm packages ship the MIME associations
 - **Window state memory**: size, position and maximized state are saved automatically and restored on next launch
-- Drop files onto the window to open them; closing unsaved tabs/windows asks for confirmation (normalization during load doesn't count as a modification, so untouched files close silently)
+- **External change detection**: edits made by other programs are picked up automatically — silently reloaded when the tab is clean (scroll position kept), or a "Reload / Keep my version" dialog when there are unsaved changes, plus an overwrite confirmation as a last line of defense before saving
+- Drop files onto the window to open them; unsaved tabs show a blue dot in the tab strip (click it to save, hover to swap in the close button), and closing unsaved tabs/windows asks for confirmation (normalization during load doesn't count as a modification, so untouched files close silently)
 
 ### Keyboard shortcuts
 
