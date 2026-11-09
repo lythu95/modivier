@@ -18,6 +18,8 @@ export interface Tab {
   encoding: string
   /** 所在目录，用于解析相对图片路径 */
   baseDir: string | null
+  /** 磁盘上文件的最后修改时间（Unix 毫秒），用于外部修改检测；未命名/未知为 null */
+  diskMtime: number | null
   root: HTMLElement
   vdHost: HTMLElement
   cmHost: HTMLElement

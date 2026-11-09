@@ -7,6 +7,23 @@ pub struct ReadResult {
     pub content: String,
     /// utf-8 / utf-8-bom / gbk
     pub encoding: &'static str,
+    /// 文件的最后修改时间（Unix 毫秒），前端用于外部修改检测
+    pub modified: u64,
+}
+
+/// 文件最后修改时间（Unix 毫秒）。文件不存在时返回 None（序列化为 null）。
+fn file_mtime(path: &str) -> Result<Option<u64>, String> {
+    match std::fs::metadata(path) {
+        Ok(m) => {
+            let t = m.modified().map_err(|e| format!("{e}"))?;
+            Ok(Some(
+                t.duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0),
+            ))
+        }
+        Err(_) => Ok(None),
+    }
 }
 
 /// 读取文件内容。编码策略：UTF-8（含 BOM）优先，失败时回退 GBK 解码，
@@ -14,26 +31,34 @@ pub struct ReadResult {
 #[tauri::command]
 fn read_file(path: String) -> Result<ReadResult, String> {
     let bytes = std::fs::read(&path).map_err(|e| format!("读取失败：{e}"))?;
+    let modified = file_mtime(&path)?;
 
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
         let text = String::from_utf8_lossy(&bytes[3..]).into_owned();
-        return Ok(ReadResult { content: text, encoding: "utf-8-bom" });
+        return Ok(ReadResult { content: text, encoding: "utf-8-bom", modified: modified.unwrap_or(0) });
     }
     if let Ok(text) = std::str::from_utf8(&bytes) {
-        return Ok(ReadResult { content: text.to_string(), encoding: "utf-8" });
+        return Ok(ReadResult { content: text.to_string(), encoding: "utf-8", modified: modified.unwrap_or(0) });
     }
     let (text, _, had_errors) = encoding_rs::GBK.decode(&bytes);
     if had_errors {
         Err("无法识别文件编码（支持 UTF-8 / GBK）".into())
     } else {
-        Ok(ReadResult { content: text.into_owned(), encoding: "gbk" })
+        Ok(ReadResult { content: text.into_owned(), encoding: "gbk", modified: modified.unwrap_or(0) })
     }
 }
 
-/// 保存文件，统一写出为 UTF-8（无 BOM）。
+/// 保存文件，统一写出为 UTF-8（无 BOM）。返回写入后的 mtime。
 #[tauri::command]
-fn write_file(path: String, content: String) -> Result<(), String> {
-    std::fs::write(&path, content).map_err(|e| format!("保存失败：{e}"))
+fn write_file(path: String, content: String) -> Result<u64, String> {
+    std::fs::write(&path, content).map_err(|e| format!("保存失败：{e}"))?;
+    Ok(file_mtime(&path)?.unwrap_or(0))
+}
+
+/// 仅查询文件 mtime（外部修改检测用），不读内容。
+#[tauri::command]
+fn stat_file(path: String) -> Result<Option<u64>, String> {
+    file_mtime(&path)
 }
 
 struct LaunchArgs(Mutex<Vec<String>>);
@@ -180,6 +205,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_file,
             write_file,
+            stat_file,
             get_launch_args,
             register_file_association
         ])

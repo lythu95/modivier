@@ -71,6 +71,17 @@ export async function onOpenFiles(cb: (paths: string[]) => void): Promise<void> 
   await listen<string[]>('open-files', (e) => cb(e.payload))
 }
 
+/** 窗口焦点变化（Tauri 原生事件；浏览器降级为 window focus/blur） */
+export async function onFocusChanged(cb: (focused: boolean) => void): Promise<void> {
+  if (!isTauri) {
+    window.addEventListener('focus', () => cb(true))
+    window.addEventListener('blur', () => cb(false))
+    return
+  }
+  const { getCurrentWindow } = await import('@tauri-apps/api/window')
+  await getCurrentWindow().onFocusChanged(({ payload }) => cb(payload))
+}
+
 /** 监听原生拖放到窗口的文件 */
 export async function onDragDrop(cb: (paths: string[]) => void): Promise<void> {
   if (!isTauri) return

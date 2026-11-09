@@ -17,6 +17,7 @@ import { focusActiveEditor, toggleMode, updateLayout, warmupEditors } from './ed
 import { EditorView } from '@codemirror/view'
 import { parseOutline, type OutlineNode } from './ui/outline'
 import {
+  checkExternalChange,
   closeActiveTab,
   initFileActions,
   MD_EXT,
@@ -39,6 +40,7 @@ import {
   isTauri,
   nativeWindow,
   onDragDrop,
+  onFocusChanged,
   onOpenFiles,
   openExternal,
 } from './lib/tauri'
@@ -163,6 +165,23 @@ async function main(): Promise<void> {
   })
 
   newTabBtn.addEventListener('click', () => newUntitledTab())
+
+  setupShortcuts()
+  setupLinkHandling(app)
+  setupCodeCopy(app)
+
+  // 外部修改检测：窗口聚焦 / 标签切换 / 定时轮询（3s）核对激活标签的磁盘 mtime
+  const onExternalCheck = () => {
+    const tab = activeTab()
+    if (tab) void checkExternalChange(tab)
+  }
+  await onFocusChanged((focused) => {
+    if (focused) onExternalCheck()
+  })
+  subscribe(() => {
+    onExternalCheck()
+  })
+  window.setInterval(onExternalCheck, 3000)
 
   setupShortcuts()
   setupLinkHandling(app)
@@ -503,7 +522,8 @@ function setupHtml5DropFallback(root: HTMLElement): void {
         id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
         path: null,
         name: f.name,
-        mode: 'ir' as const,
+        mode: "ir" as const,
+        diskMtime: null,
         savedContent: text,
         content: text,
         encoding: 'utf-8',

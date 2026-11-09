@@ -178,6 +178,24 @@ export function activateEditor(tab: Tab): void {
   emitCursor()
 }
 
+/** 外部修改重载：用磁盘内容整体替换源码模式文档（保留实例与撤销栈重置语义） */
+export function resetCmForReload(tab: Tab, content: string): void {
+  if (!tab.cm) return
+  void loadCmDeps().then((m) => {
+    if (tab.cm && tab.root.isConnected) {
+      m.resetCmDoc(
+        tab.cm,
+        content,
+        (v) => {
+          tab.content = v
+          notify()
+        },
+        emitCursor,
+      )
+    }
+  })
+}
+
 export function focusActiveEditor(): void {
   const tab = activeTab()
   if (!tab) return

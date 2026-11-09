@@ -6,13 +6,14 @@ import {
   hasUnsavedChanges,
   markSaved,
   nextUntitledName,
+  notify,
   registerTab,
   unregisterTab,
   type Tab,
 } from './state'
 import { attachTabDom, currentContent, destroyTabEditors } from './editors'
-import { appAlert, showAppDialog } from './ui/dialog'
-import { invoke, openDialog, saveDialog } from './lib/tauri'
+import { appAlert, isDialogOpen, showAppDialog } from './ui/dialog'
+import { invoke, isTauri, openDialog, saveDialog } from './lib/tauri'
 import { t } from './i18n'
 
 const MD_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd', 'txt'] }]
@@ -22,6 +23,7 @@ export const MD_EXT = /\.(md|markdown|mdown|mkd|txt)$/i
 interface ReadResult {
   content: string
   encoding: string
+  modified: number
 }
 
 let editorsRoot: HTMLElement | null = null
@@ -37,6 +39,7 @@ function newTabObject(init: {
   content: string
   encoding?: string
   baseDir: string | null
+  diskMtime?: number | null
 }): Tab {
   return {
     id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
@@ -47,6 +50,7 @@ function newTabObject(init: {
     content: init.content,
     encoding: init.encoding ?? 'utf-8',
     baseDir: init.baseDir,
+    diskMtime: init.diskMtime ?? null,
     root: null as unknown as HTMLElement,
     vdHost: null as unknown as HTMLElement,
     cmHost: null as unknown as HTMLElement,
@@ -89,6 +93,7 @@ export async function openPath(path: string): Promise<void> {
       content: result.content,
       encoding: result.encoding,
       baseDir: dirnameOf(path),
+      diskMtime: result.modified,
     })
     attachAndRegister(tab)
   } catch (e) {
@@ -118,7 +123,8 @@ export async function openViaDialog(): Promise<void> {
   await openPaths(list)
 }
 
-/** 保存当前标签页；saveAs 为 true 或文件未命名时弹出另存为对话框 */
+/** 保存当前标签页；saveAs 为 true 或文件未命名时弹出另存为对话框。
+ *  保存前拦截外部修改冲突：磁盘 mtime 与已知基准不一致时弹出覆盖确认。 */
 export async function saveTab(tab: Tab, saveAs = false): Promise<boolean> {
   tab.content = currentContent(tab)
   let path = tab.path
@@ -131,14 +137,89 @@ export async function saveTab(tab: Tab, saveAs = false): Promise<boolean> {
     })
     if (!path) return false
   }
+  // 最后防线：磁盘上的文件在打开/上次保存之后又被外部改过 → 保存会覆盖外部内容，先确认
+  const diskMtime = await invoke<number | null>('stat_file', { path }).catch(() => null)
+  if (!saveAs && diskMtime != null && tab.diskMtime != null && diskMtime !== tab.diskMtime) {
+    const action = await showAppDialog({
+      title: t('dlg.extTitle'),
+      message: t('dlg.extOverwrite', { name: tab.name }),
+      buttons: [
+        { label: t('dlg.extOverwriteOk'), value: 'overwrite', kind: 'danger' },
+        { label: t('dlg.cancel'), value: 'cancel' },
+      ],
+      cancelValue: 'cancel',
+    })
+    if (action !== 'overwrite') return false
+  }
   try {
-    await invoke<void>('write_file', { path, content: tab.content })
+    const mtime = await invoke<number>('write_file', { path, content: tab.content })
     markSaved(tab, path)
+    tab.diskMtime = mtime
     return true
   } catch (e) {
     await appAlert(String(e), t('dlg.saveFail'))
     return false
   }
+}
+
+/**
+ * 外部修改检测（窗口聚焦 / 标签激活时调用）：
+ * - 无未保存修改：静默重载磁盘新内容（编辑器视图 + 滚动位置尽量保留）；
+ * - 有未保存修改：对话框让用户选择「重新加载（放弃修改）」或「保留我的版本」。
+ * 保留版本时把保存基准对齐到磁盘新内容，后续保存不再重复提示。
+ */
+export async function checkExternalChange(tab: Tab): Promise<void> {
+  // 防重入：对话框等待用户选择期间，轮询/聚焦会反复进入，叠加出多层对话框
+  if (isDialogOpen()) return
+  if (!tab.path || !isTauri) return
+  const diskMtime = await invoke<number | null>('stat_file', { path: tab.path }).catch(() => null)
+  if (diskMtime == null || tab.diskMtime == null || diskMtime === tab.diskMtime) return
+
+  const result = await invoke<ReadResult>('read_file', { path: tab.path }).catch(() => null)
+  if (!result) return
+
+  if (!hasUnsavedChanges(tab)) {
+    reloadTab(tab, result.content, result.modified)
+    return
+  }
+
+  const action = await showAppDialog({
+    title: t('dlg.extTitle'),
+    message: t('dlg.extBody', { name: tab.name }),
+    buttons: [
+      { label: t('dlg.extReload'), value: 'reload', kind: 'primary' },
+      { label: t('dlg.extKeep'), value: 'keep' },
+    ],
+    cancelValue: 'keep',
+  })
+  if (action === 'reload') {
+    reloadTab(tab, result.content, result.modified)
+  } else {
+    // 保留我的版本：以磁盘新内容为保存基准，之后保存覆盖不再重复提示
+    tab.savedContent = result.content
+    tab.diskMtime = result.modified
+    notify()
+  }
+}
+
+/** 用磁盘内容重置标签（内容/基准/mtime/编辑器视图），尽量保留滚动位置 */
+function reloadTab(tab: Tab, content: string, mtime: number): void {
+  const scrollTop = (tab.mode === 'source' ? tab.cm?.scrollDOM.scrollTop : tab.vdHost?.querySelector('.vditor-ir')?.scrollTop) ?? 0
+  tab.content = content
+  tab.savedContent = content
+  tab.diskMtime = mtime
+  if (tab.vditor) tab.vditor.setValue(content, true)
+  if (tab.cm) {
+    void import('./editors').then((m) => m.resetCmForReload(tab, content))
+  }
+  notify()
+  requestAnimationFrame(() => {
+    if (tab.mode === 'source' && tab.cm) tab.cm.scrollDOM.scrollTop = scrollTop
+    else {
+      const el = tab.vdHost?.querySelector('.vditor-ir') as HTMLElement | null
+      if (el) el.scrollTop = scrollTop
+    }
+  })
 }
 
 /** 关闭标签页（有实质修改时弹应用内对话框确认）。返回是否真的关闭了。 */
