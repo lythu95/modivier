@@ -1,5 +1,5 @@
 import { setActive, subscribe, hasUnsavedChanges, tabs, activeId, type Tab } from '../state'
-import { closeTabInteractive, closeOtherTabs } from '../files'
+import { closeTabInteractive, closeOtherTabs, saveTab } from '../files'
 import { showTabContextMenu } from './menu'
 import { t } from '../i18n'
 
@@ -9,6 +9,12 @@ export function setupTabsBar(bar: HTMLElement): void {
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-id]')
     if (!el) return
     const id = el.dataset.id!
+    // 未保存圆点：点击即保存（Sublime Text 惯例）
+    if ((e.target as HTMLElement).closest('.tab-dirty-dot')) {
+      const tab = tabs.find((t) => t.id === id)
+      if (tab) void saveTab(tab)
+      return
+    }
     if ((e.target as HTMLElement).closest('.tab-close')) {
       const tab = tabs.find((t) => t.id === id)
       if (tab) void closeTabInteractive(tab)
@@ -49,8 +55,9 @@ export function setupTabsBar(bar: HTMLElement): void {
 }
 
 function renderTab(tab: Tab): HTMLElement {
+  const dirty = hasUnsavedChanges(tab)
   const el = document.createElement('div')
-  el.className = 'tab' + (tab.id === activeId ? ' active' : '')
+  el.className = 'tab' + (tab.id === activeId ? ' active' : '') + (dirty ? ' dirty' : '')
   el.dataset.id = tab.id
   el.title = tab.path ?? tab.name
 
@@ -59,10 +66,11 @@ function renderTab(tab: Tab): HTMLElement {
   title.textContent = tab.name
   el.appendChild(title)
 
-  if (hasUnsavedChanges(tab)) {
+  // 未保存圆点：占关闭按钮的槽位，悬停标签时让位给 ×（点击圆点=保存）
+  if (dirty) {
     const dot = document.createElement('span')
-    dot.className = 'tab-dirty'
-    dot.textContent = '●'
+    dot.className = 'tab-dirty-dot'
+    dot.title = t('tt.dirtyTab')
     el.appendChild(dot)
   }
 

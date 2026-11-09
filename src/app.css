@@ -147,10 +147,42 @@ button {
   font-size: 12.5px;
 }
 
-.tab-dirty {
-  color: var(--accent);
-  font-size: 9px;
+/* 未保存圆点：占关闭按钮槽位（Sublime Text 风格），悬停标签让位给 ×，点击圆点保存 */
+.tab.dirty .tab-close {
+  display: none;
+}
+
+.tab.dirty:hover .tab-close {
+  display: grid;
+}
+
+.tab-dirty-dot {
+  display: none;
+  width: 18px;
+  height: 18px;
+  place-items: center;
   flex: none;
+  border-radius: 4px;
+}
+
+.tab.dirty .tab-dirty-dot {
+  display: grid;
+}
+
+.tab.dirty:hover .tab-dirty-dot {
+  display: none;
+}
+
+.tab-dirty-dot::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.tab-dirty-dot:hover {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
 }
 
 .tab-close {
