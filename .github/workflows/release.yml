@@ -15,7 +15,7 @@ jobs:
       matrix:
         settings:
           # macOS 通用二进制（Intel + Apple Silicon 一个安装包）+ 便携单文件
-          - platform: macos-latest
+          - platform: macos-15
             args: --target universal-apple-darwin
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
             artifact-name: macos-packages
