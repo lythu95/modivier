@@ -129,8 +129,9 @@ export function reconfigureCmTheme(view: EditorView, dark: boolean): void {
   })
 }
 
-/** 模式切换定位：把视口滚到 0 起的行号处（-1 时按 ratio 兜底），顺带把光标放到该行行首 */
-export function scrollCmTo(view: EditorView, line: number, ratio: number): void {
+/** 模式切换定位：把光标放到 0 起的行号处并滚动（-1 时按 ratio 兜底）。
+ *  center=true 时锚行滚到视口中部（内容锚模式，符合"关注行位置基本不变"） */
+export function scrollCmTo(view: EditorView, line: number, ratio: number, vpRatio = 0.5): void {
   const doc = view.state.doc
   if (line >= 0 && doc.lines > 0) {
     const l = doc.line(Math.min(line + 1, doc.lines))
@@ -138,8 +139,18 @@ export function scrollCmTo(view: EditorView, line: number, ratio: number): void 
       selection: { anchor: l.from },
       effects: EditorView.scrollIntoView(l.from, { y: 'start' }),
     })
+    view.focus()
+    // 微调：锚行回到捕获时在视口中的相对位置（消除往返漂移）
+    requestAnimationFrame(() => {
+      const r = view.coordsAtPos(l.from)
+      if (!r) return
+      const sr = view.scrollDOM.getBoundingClientRect()
+      const want = sr.top + vpRatio * sr.height
+      view.scrollDOM.scrollTop += r.top - want
+    })
     return
   }
   const max = view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight
   view.scrollDOM.scrollTop = ratio * max
+  view.focus()
 }

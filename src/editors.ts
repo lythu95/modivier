@@ -2,7 +2,6 @@ import { getTheme, onThemeChange } from './theme'
 import { onLocaleChange, vditorLang } from './i18n'
 import { activeId, activeTab, notify, tabs, type Tab } from './state'
 import { installImageResolver } from './images'
-import { parseOutline, type OutlineNode } from './ui/outline'
 
 const VDITOR_CONTENT_THEME_PATH = '/vditor/dist/css/content-theme'
 
@@ -51,13 +50,22 @@ const cmLoading = new WeakSet<Tab>()
 
 export function currentContent(tab: Tab): string {
   if (tab.mode === 'source' && tab.cm) return tab.cm.state.doc.toString()
-  if (vditorReady(tab)) return tab.vditor!.getValue()
+  if (vditorReady(tab)) {
+    try {
+      return tab.vditor!.getValue()
+    } catch {
+      // lute 尚未就绪等瞬态：退回已知内容
+    }
+  }
   return tab.content
 }
 
 /** Vditor 构造后内部初始化是异步的（需先加载 Lute），完成前实例方法不可用 */
 function vditorReady(tab: Tab): boolean {
-  return tab.vditor != null && (tab.vditor as unknown as { vditor?: unknown }).vditor != null
+  const v = tab.vditor as unknown as { vditor?: { currentMode?: unknown; lute?: unknown } } | null
+  if (tab.vditor == null || v == null) return false
+  // lute 在内部 init()（wasm 加载）完成后才赋值，此前 getValue 等会抛错
+  return v.vditor != null && v.vditor.currentMode != null && v.vditor.lute != null
 }
 
 function vditorOptions(value: string, onInput: (v: string) => void, onReady: () => void): IOptions {
@@ -132,11 +140,38 @@ export function activateEditor(tab: Tab): void {
                 notify()
               }
             }
-            if (tab.id === activeId && tab.mode === 'ir') tab.vditor?.focus()
+            if (tab.id === activeId && tab.mode === 'ir') {
+        try {
+          tab.vditor?.focus()
+        } catch {
+          // 同上：内部状态竞态防御
+        }
+      }
           },
         ),
       )
-      if (tab.id === activeId && tab.mode === 'ir') tab.vditor?.focus()
+      if (tab.id === activeId && tab.mode === 'ir') {
+        try {
+          tab.vditor?.focus()
+        } catch {
+          // 同上：内部状态竞态防御
+        }
+      }
+      // 恢复上次浏览位置（打开文件时挂到 pendingRestore）
+      const restore = tab.pendingRestore
+      if (restore) {
+        tab.pendingRestore = null
+        requestAnimationFrame(() => {
+          const pre = tab.vdHost?.querySelector('.vditor-ir pre.vditor-reset') as HTMLElement | null
+          let el: HTMLElement | null = pre
+          while (el && el !== tab.vdHost) {
+            if (el.scrollHeight > el.clientHeight + 1) break
+            el = el.parentElement
+          }
+          const target = el ?? pre
+          if (target) target.scrollTop = restore.ir
+        })
+      }
     })
   }
 
@@ -162,7 +197,7 @@ export function activateEditor(tab: Tab): void {
         const anchor = pendingCmAnchors.get(tab)
         if (anchor) {
           pendingCmAnchors.delete(tab)
-          m.scrollCmTo(tab.cm, anchor.line, anchor.ratio)
+          m.scrollCmTo(tab.cm, anchor.line, anchor.ratio, anchor.vpRatio)
         }
       }
     })
@@ -200,35 +235,38 @@ export function focusActiveEditor(): void {
   const tab = activeTab()
   if (!tab) return
   if (tab.mode === 'source') tab.cm?.focus()
-  else if (vditorReady(tab)) tab.vditor?.focus()
+  else if (vditorReady(tab)) {
+    try {
+      tab.vditor?.focus()
+    } catch {
+      // vditor 内部状态竞态（如初始化中途被 destroy），忽略聚焦失败
+    }
+  }
 }
 
 /* ---------------- 模式切换滚动定位 ---------------- */
 
+/**
+ * 内容锚方案：以「块文本」为锚在两种表示间互查（IR 非活动块显示的就是源码文本），
+ * 避免比例锚在两种渲染高度不一致时反复切换的累积漂移。
+ * - 光标在视口内：锚定光标所在块/行（编辑连续性）
+ * - 光标不在视口（纯浏览）：锚定视口中线所在块/行（注意力位置）
+ */
 interface ModeAnchor {
-  /** 标题序号（DOM/文档顺序，-1 = 附近无标题） */
-  order: number
-  /** 顶部可见行号（0 起，-1 = 不可用） */
+  /** 源码行号（0 起，-1 = 未能定位） */
   line: number
-  /** 滚动比例兜底（0~1） */
+  /** 内容锚：目标块清洗后的文本前缀（≥8 字符才启用） */
+  needle: string
+  /** 比例兜底（0~1） */
   ratio: number
+  /** 锚定时光标是否在视口内（切换后光标保持闪烁） */
+  hasCursor: boolean
+  /** 锚点在视口内的相对位置（0=顶 1=底），应用时恢复到同一位置保证不漂移 */
+  vpRatio: number
 }
 
 /** 源码模式尚未创建实例时的待应用定位 */
 const pendingCmAnchors = new WeakMap<Tab, ModeAnchor>()
-
-/** 标题树按文档顺序摊平（order 即数组下标） */
-function flattenOutline(nodes: OutlineNode[]): OutlineNode[] {
-  const out: OutlineNode[] = []
-  const walk = (list: OutlineNode[]) => {
-    for (const n of list) {
-      out.push(n)
-      walk(n.children)
-    }
-  }
-  walk(nodes)
-  return out
-}
 
 /** IR 滚动容器：从 pre 向上找真正溢出的元素（Vditor 版本间结构有差异） */
 function irScroller(tab: Tab, pre: HTMLElement): HTMLElement {
@@ -240,56 +278,190 @@ function irScroller(tab: Tab, pre: HTMLElement): HTMLElement {
   return pre
 }
 
-function captureVditorAnchor(tab: Tab): ModeAnchor | null {
-  if (!vditorReady(tab)) return null
+/** 匹配归一：剥掉 markdown 前缀标记与行内强调符号，只留文本 */
+function normalizeForMatch(s: string): string {
+  return s
+    .replace(/\u200b/g, '')
+    .replace(/^(#{1,6}\s+|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d+[.)]\s+|>\s?)+/, '')
+    .replace(/!\[[^\]]*\]\([^)]*\)|\[[^\]]*\]\([^)]*\)/g, (m) => m.replace(/!|\[|\]|\([^)]*\)/g, ''))
+    .replace(/[*_~`=|]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** 取块元素的内容锚文本（剔除 IR 源码标记与 checkbox，剩纯文本） */
+function blockNeedle(block: HTMLElement): string {
+  const clone = block.cloneNode(true) as HTMLElement
+  clone
+    .querySelectorAll('.vditor-ir__marker, input[type=checkbox], .vditor-task__marker')
+    .forEach((m) => m.remove())
+  return normalizeForMatch(clone.textContent ?? '').slice(0, 24)
+}
+
+/** 光标是否落在元素的视口可见范围内 */
+function visibleInView(el: HTMLElement, scroller: HTMLElement): boolean {
+  const r = el.getBoundingClientRect()
+  return r.top >= scroller.getBoundingClientRect().top - 4 && r.bottom <= scroller.getBoundingClientRect().bottom + 4
+}
+
+/** 视口中线覆盖的顶层块（注意力位置） */
+function middleBlock(pre: HTMLElement): HTMLElement | null {
+  const rect = pre.getBoundingClientRect()
+  const midY = rect.top + rect.height / 2
+  let best: HTMLElement | null = null
+  for (const child of Array.from(pre.children)) {
+    if (!(child instanceof HTMLElement)) continue
+    const r = child.getBoundingClientRect()
+    if (r.top <= midY && r.bottom >= midY) return child
+    if (r.top < midY) best = child
+  }
+  return best
+}
+
+/** 光标所在的顶层块（编辑态） */
+function caretBlock(pre: HTMLElement): HTMLElement | null {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0 || !sel.anchorNode) return null
+  if (!pre.contains(sel.anchorNode)) return null
+  let node: Node | null = sel.anchorNode
+  while (node && node !== pre) {
+    if (node instanceof HTMLElement) {
+      const b = node.closest<HTMLElement>('[data-block="0"]')
+      if (b && pre.contains(b)) return b
+    }
+    node = node.parentNode
+  }
+  return null
+}
+
+/** 内容锚 → 源码行号：找第一处归一后以前缀开头的行 */
+function findLineByNeedle(content: string, needle: string): number {
+  if (needle.length < 8) return -1
+  const lines = content.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    if (normalizeForMatch(lines[i]).startsWith(needle)) return i
+  }
+  // 宽松一次：needle 作为子串出现
+  for (let i = 0; i < lines.length; i++) {
+    if (normalizeForMatch(lines[i]).includes(needle)) return i
+  }
+  return -1
+}
+
+function captureVditorAnchor(tab: Tab): ModeAnchor {
+  const fallback: ModeAnchor = { line: -1, needle: '', ratio: 0, hasCursor: false, vpRatio: 0.5 }
+  if (!vditorReady(tab)) return fallback
   const pre = tab.vdHost.querySelector<HTMLElement>('.vditor-ir pre.vditor-reset')
-  if (!pre) return null
+  if (!pre) return fallback
   const scroller = irScroller(tab, pre)
   const max = scroller.scrollHeight - scroller.clientHeight
   const ratio = max > 0 ? scroller.scrollTop / max : 0
-  // 视口顶部往上最近的一个标题（DOM 序号），在目标模式里按同一序号找回
-  const preTop = pre.getBoundingClientRect().top
-  let order = -1
-  pre.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach((h, i) => {
-    if (h.getBoundingClientRect().top - preTop <= 12) order = i
-  })
-  const line = order >= 0 ? (flattenOutline(parseOutline(tab.content))[order]?.lineNo ?? -1) : -1
-  return { order, line, ratio }
+
+  const caret = caretBlock(pre)
+  const inView = caret && visibleInView(caret, scroller)
+  const block = (caret && inView ? caret : null) ?? middleBlock(pre)
+  const needle = block ? blockNeedle(block) : ''
+  const line = needle ? findLineByNeedle(tab.content, needle) : -1
+  // 锚块在视口内的相对位置（应用侧恢复到同一位置，消除往返漂移）
+  const sRect = scroller.getBoundingClientRect()
+  let vpRatio = 0.5
+  if (block) {
+    const bRect = block.getBoundingClientRect()
+    if (scroller.clientHeight > 0) {
+      vpRatio = Math.min(1, Math.max(0, (bRect.top - sRect.top) / scroller.clientHeight))
+    }
+  }
+  return { line, needle, ratio, hasCursor: !!(caret && inView), vpRatio }
 }
 
-function captureCmAnchor(tab: Tab): ModeAnchor | null {
-  if (!tab.cm) return null
+function captureCmAnchor(tab: Tab): ModeAnchor {
+  const fallback: ModeAnchor = { line: -1, needle: '', ratio: 0, hasCursor: false, vpRatio: 0.5 }
+  if (!tab.cm) return fallback
   const cm = tab.cm
   const max = cm.scrollDOM.scrollHeight - cm.scrollDOM.clientHeight
   const ratio = max > 0 ? cm.scrollDOM.scrollTop / max : 0
-  const block = cm.lineBlockAtHeight(Math.max(0, cm.scrollDOM.scrollTop))
-  const line = cm.state.doc.lineAt(block.from).number - 1
-  // 该行上方最近标题（DOM 序号），在 IR 里按同一序号找回
-  let order = -1
-  for (const h of flattenOutline(parseOutline(tab.content))) {
-    if (h.lineNo <= line) order = h.order
+
+  const head = cm.state.selection.main.head
+  const headRect = cm.coordsAtPos(head)
+  const sr = cm.scrollDOM.getBoundingClientRect()
+  const cursorVisible = !!headRect && headRect.top >= sr.top - 4 && headRect.bottom <= sr.bottom + 4
+
+  let line: number
+  let hasCursor: boolean
+  let anchorRect: { top: number } | null = null
+  if (cursorVisible) {
+    line = cm.state.doc.lineAt(head).number - 1
+    hasCursor = true
+    anchorRect = headRect
+  } else {
+    const block = cm.lineBlockAtHeight(Math.max(0, cm.scrollDOM.scrollTop + cm.scrollDOM.clientHeight * 0.5))
+    line = cm.state.doc.lineAt(block.from).number - 1
+    hasCursor = false
+    anchorRect = cm.coordsAtPos(block.from)
   }
-  return { order, line, ratio }
+  const vpRatio =
+    anchorRect && sr.height > 0
+      ? Math.min(1, Math.max(0, (anchorRect.top - sr.top) / sr.height))
+      : 0.5
+  const lineText = cm.state.doc.line(Math.min(line + 1, cm.state.doc.lines)).text
+  const needle = normalizeForMatch(lineText).slice(0, 24)
+  return { line, needle, ratio, hasCursor, vpRatio }
+}
+
+/** 把光标放置到块内第一个文本节点开头 */
+function setCaretToBlockStart(block: HTMLElement): void {
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  const node = walker.nextNode()
+  if (!node) return
+  const range = document.createRange()
+  range.setStart(node, 0)
+  range.collapse(true)
+  const sel = window.getSelection()
+  sel?.removeAllRanges()
+  sel?.addRange(range)
 }
 
 function applyAnchorToVditor(tab: Tab, anchor: ModeAnchor): void {
   const pre = tab.vdHost.querySelector<HTMLElement>('.vditor-ir pre.vditor-reset')
   if (!pre) return
-  if (anchor.order >= 0) {
-    const target = pre.querySelectorAll('h1,h2,h3,h4,h5,h6')[anchor.order] as
-      | HTMLElement
-      | undefined
+
+  // 1) 内容锚 + 视口相对位置对齐（消除往返漂移的关键）
+  if (anchor.needle.length >= 8) {
+    let target: HTMLElement | null = null
+    for (const child of Array.from(pre.children)) {
+      if (child instanceof HTMLElement && normalizeForMatch(child.textContent ?? '').includes(anchor.needle)) {
+        target = child
+        break
+      }
+    }
+    if (!target) {
+      target =
+        (Array.from(pre.querySelectorAll<HTMLElement>('li, p, h1, h2, h3, h4, h5, h6')).find(
+          (el) => normalizeForMatch(el.textContent ?? '').startsWith(anchor.needle),
+        ) as HTMLElement | undefined) ?? null
+    }
     if (target) {
+      const scroller = irScroller(tab, pre)
+      // 先把锚块顶对齐视口顶
       target.scrollIntoView({ block: 'start' })
+      // 再微调：让锚块回到捕获时在视口中的相对位置
+      requestAnimationFrame(() => {
+        const sRect = scroller.getBoundingClientRect()
+        const tRect = target.getBoundingClientRect()
+        const want = sRect.top + anchor.vpRatio * sRect.height
+        scroller.scrollTop += tRect.top - want
+        if (anchor.hasCursor) setCaretToBlockStart(target)
+      })
       return
     }
   }
+  // 2) 比例兜底
   const scroller = irScroller(tab, pre)
   const max = scroller.scrollHeight - scroller.clientHeight
   scroller.scrollTop = anchor.ratio * max
 }
 
-/** Ctrl+/ 切换模式：切换前把内容同步给目标编辑器，并互相定位滚动位置 */
+/** Ctrl+/ 切换模式：切换前把内容同步给目标编辑器，并按内容锚互相定位 */
 export function toggleMode(tab: Tab): void {
   tab.content = currentContent(tab)
   const goingSource = tab.mode === 'ir'
@@ -309,7 +481,7 @@ export function toggleMode(tab: Tab): void {
           },
           emitCursor,
         )
-        if (anchor) m.scrollCmTo(cm, anchor.line, anchor.ratio)
+        if (anchor) m.scrollCmTo(cm, anchor.line, anchor.ratio, anchor.vpRatio)
       }
     })
   } else if (goingSource && anchor) {

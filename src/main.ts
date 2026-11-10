@@ -27,6 +27,7 @@ import {
   openViaDialog,
   saveTab,
 } from './files'
+import { savePosition } from './positions'
 import { joinPath } from './images'
 import { openLocal } from './lib/tauri'
 import { toggleSearchBar } from './ui/searchbar'
@@ -183,10 +184,6 @@ async function main(): Promise<void> {
   })
   window.setInterval(onExternalCheck, 3000)
 
-  setupShortcuts()
-  setupLinkHandling(app)
-  setupCodeCopy(app)
-
   // 文件来源一：拖放
   await onDragDrop((paths) => void openPaths(paths))
   setupHtml5DropFallback(app)
@@ -210,6 +207,7 @@ async function main(): Promise<void> {
     // 已有对话框打开时忽略本次关闭请求，避免对话框叠加
     if (isDialogOpen()) return
     if (!anyUnsavedChanges()) {
+      tabs.forEach(savePosition)
       await win.destroy()
       return
     }
@@ -222,7 +220,10 @@ async function main(): Promise<void> {
       ],
       cancelValue: 'cancel',
     })
-    if (action === 'quit') await win.destroy()
+    if (action === 'quit') {
+      tabs.forEach(savePosition)
+      await win.destroy()
+    }
   })
 
   onLocaleChange(() => {
@@ -524,6 +525,7 @@ function setupHtml5DropFallback(root: HTMLElement): void {
         name: f.name,
         mode: "ir" as const,
         diskMtime: null,
+        pendingRestore: null,
         savedContent: text,
         content: text,
         encoding: 'utf-8',

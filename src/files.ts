@@ -15,6 +15,7 @@ import { attachTabDom, currentContent, destroyTabEditors } from './editors'
 import { appAlert, isDialogOpen, showAppDialog } from './ui/dialog'
 import { invoke, isTauri, openDialog, saveDialog } from './lib/tauri'
 import { t } from './i18n'
+import { loadPosition, savePosition } from './positions'
 
 const MD_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd', 'txt'] }]
 
@@ -51,6 +52,7 @@ function newTabObject(init: {
     encoding: init.encoding ?? 'utf-8',
     baseDir: init.baseDir,
     diskMtime: init.diskMtime ?? null,
+    pendingRestore: null,
     root: null as unknown as HTMLElement,
     vdHost: null as unknown as HTMLElement,
     cmHost: null as unknown as HTMLElement,
@@ -95,6 +97,7 @@ export async function openPath(path: string): Promise<void> {
       baseDir: dirnameOf(path),
       diskMtime: result.modified,
     })
+    tab.pendingRestore = loadPosition(path)
     attachAndRegister(tab)
   } catch (e) {
     await appAlert(String(e), t('dlg.openFail'))
@@ -224,6 +227,7 @@ function reloadTab(tab: Tab, content: string, mtime: number): void {
 
 /** 关闭标签页（有实质修改时弹应用内对话框确认）。返回是否真的关闭了。 */
 export async function closeTabInteractive(tab: Tab): Promise<boolean> {
+  savePosition(tab) // 关闭前记录浏览位置（下次打开恢复）
   tab.content = currentContent(tab)
   if (hasUnsavedChanges(tab)) {
     const action = await showAppDialog({

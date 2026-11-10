@@ -20,6 +20,8 @@ export interface Tab {
   baseDir: string | null
   /** 磁盘上文件的最后修改时间（Unix 毫秒），用于外部修改检测；未命名/未知为 null */
   diskMtime: number | null
+  /** 打开时待恢复的上次浏览位置（编辑器就绪后应用并清空） */
+  pendingRestore: { ir: number } | null
   root: HTMLElement
   vdHost: HTMLElement
   cmHost: HTMLElement

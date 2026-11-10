@@ -5,6 +5,7 @@ import { LANGUAGES, getLocale, setLocale, t } from '../i18n'
 import { closeTabInteractive, closeOtherTabs, newUntitledTab, openViaDialog, saveTab } from '../files'
 import { toggleMode } from '../editors'
 import { toggleOutline } from './outline'
+import { rememberPositions, toggleRememberPositions } from '../positions'
 import { pickSourceFont } from '../font-setting'
 import { invoke, desktopPlatform, isTauri, openExternal, revealInDir } from '../lib/tauri'
 import { showAppDialog, showLightDialog } from './dialog'
@@ -164,6 +165,13 @@ export function showAppMenu(anchor: HTMLElement): void {
       { separator: true },
       // 偏好设置
       { label: t('menu.font'), action: () => void pickSourceFont() },
+      {
+        label: t('menu.rememberPos'),
+        checked: rememberPositions(),
+        action: () => {
+          toggleRememberPositions()
+        },
+      },
       {
         label: t('menu.language'),
         children: LANGUAGES.map((l) => ({

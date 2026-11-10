@@ -158,8 +158,8 @@ button {
 
 .tab-dirty-dot {
   display: none;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   place-items: center;
   flex: none;
   border-radius: 4px;
@@ -175,8 +175,8 @@ button {
 
 .tab-dirty-dot::before {
   content: '';
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--accent);
 }
@@ -188,8 +188,8 @@ button {
 .tab-close {
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
   color: var(--fg-muted);
   opacity: 0;
