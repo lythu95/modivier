@@ -513,7 +513,7 @@ function setupHtml5DropFallback(root: HTMLElement): void {
   root.addEventListener('drop', async (e) => {
     if (isTauri) return
     e.preventDefault()
-    const files = [...(e.dataTransfer?.files ?? [])].filter((f) => /\.(md|markdown|txt)$/i.test(f.name))
+    const files = [...(e.dataTransfer?.files ?? [])]
     for (const f of files) {
       const text = await f.text()
       // 浏览器调试无法拿到绝对路径，直接按未命名内容打开
@@ -523,7 +523,7 @@ function setupHtml5DropFallback(root: HTMLElement): void {
         id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
         path: null,
         name: f.name,
-        mode: "ir" as const,
+        mode: (MD_EXT.test(f.name) ? 'ir' : 'source') as 'ir' | 'source',
         diskMtime: null,
         pendingRestore: null,
         savedContent: text,

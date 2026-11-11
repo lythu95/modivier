@@ -26,8 +26,8 @@ fn file_mtime(path: &str) -> Result<Option<u64>, String> {
     }
 }
 
-/// 读取文件内容。编码策略：UTF-8（含 BOM）优先，失败时回退 GBK 解码，
-/// 两者都失败才报错，以兼容中文 Windows 环境下的老文档。
+/// 读取文件内容。编码策略：UTF-8（含 BOM）优先 → GBK → 仍失败（二进制等）时
+/// 按 Latin-1 有损解码，保证任意文件都能以纯文本方式打开查看。
 #[tauri::command]
 fn read_file(path: String) -> Result<ReadResult, String> {
     let bytes = std::fs::read(&path).map_err(|e| format!("读取失败：{e}"))?;
@@ -41,11 +41,12 @@ fn read_file(path: String) -> Result<ReadResult, String> {
         return Ok(ReadResult { content: text.to_string(), encoding: "utf-8", modified: modified.unwrap_or(0) });
     }
     let (text, _, had_errors) = encoding_rs::GBK.decode(&bytes);
-    if had_errors {
-        Err("无法识别文件编码（支持 UTF-8 / GBK）".into())
-    } else {
-        Ok(ReadResult { content: text.into_owned(), encoding: "gbk", modified: modified.unwrap_or(0) })
+    if !had_errors {
+        return Ok(ReadResult { content: text.into_owned(), encoding: "gbk", modified: modified.unwrap_or(0) });
     }
+    // 二进制 / 非 UTF-8 非 GBK：Latin-1 单字节映射，解码永不失败
+    let (text, _, _) = encoding_rs::WINDOWS_1252.decode(&bytes);
+    Ok(ReadResult { content: text.into_owned(), encoding: "latin1", modified: modified.unwrap_or(0) })
 }
 
 /// 保存文件，统一写出为 UTF-8（无 BOM）。返回写入后的 mtime。

@@ -15,9 +15,13 @@ import { attachTabDom, currentContent, destroyTabEditors } from './editors'
 import { appAlert, isDialogOpen, showAppDialog } from './ui/dialog'
 import { invoke, isTauri, openDialog, saveDialog } from './lib/tauri'
 import { t } from './i18n'
+import { showToast } from './ui/toast'
 import { loadPosition, savePosition } from './positions'
 
-const MD_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd', 'txt'] }]
+const MD_FILTER = [
+  { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd', 'txt'] },
+  { name: '所有文件 / All files', extensions: ['*'] },
+]
 
 export const MD_EXT = /\.(md|markdown|mdown|mkd|txt)$/i
 
@@ -41,12 +45,14 @@ function newTabObject(init: {
   encoding?: string
   baseDir: string | null
   diskMtime?: number | null
+  /** 非 Markdown 文件以源码模式打开 */
+  mode?: 'ir' | 'source'
 }): Tab {
   return {
     id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     path: init.path,
     name: init.name,
-    mode: 'ir',
+    mode: init.mode ?? 'ir',
     savedContent: init.content,
     content: init.content,
     encoding: init.encoding ?? 'utf-8',
@@ -80,15 +86,26 @@ function attachAndRegister(tab: Tab): void {
 }
 
 /** 打开一个文件：已打开则聚焦，否则读取并新建标签页 */
-export async function openPath(path: string): Promise<void> {
+export interface OpenOutcome {
+  path: string
+  name: string
+  /** 非 Markdown 文件（以源码模式打开） */
+  notMarkdown: boolean
+  /** 二进制等文件按纯文本有损解码打开 */
+  lenientDecoded: boolean
+}
+
+/** 打开一个文件：已打开则聚焦；非 Markdown 以源码模式打开 */
+export async function openPath(path: string): Promise<OpenOutcome | null> {
   const existing = findByPath(path)
   if (existing) {
     const { setActive } = await import('./state')
     setActive(existing.id)
-    return
+    return null
   }
   try {
     const result = await invoke<ReadResult>('read_file', { path })
+    const notMarkdown = !MD_EXT.test(path)
     const tab = newTabObject({
       path,
       name: basename(path),
@@ -96,11 +113,14 @@ export async function openPath(path: string): Promise<void> {
       encoding: result.encoding,
       baseDir: dirnameOf(path),
       diskMtime: result.modified,
+      mode: notMarkdown ? 'source' : 'ir',
     })
     tab.pendingRestore = loadPosition(path)
     attachAndRegister(tab)
+    return { path, name: basename(path), notMarkdown, lenientDecoded: result.encoding === 'latin1' }
   } catch (e) {
     await appAlert(String(e), t('dlg.openFail'))
+    return null
   }
 }
 
@@ -111,8 +131,17 @@ function dirnameOf(path: string): string {
 
 /** 批量打开（拖放/命令行），自动过滤非 Markdown 文件 */
 export async function openPaths(paths: string[]): Promise<void> {
-  const files = paths.filter((p) => MD_EXT.test(p))
-  for (const f of files) await openPath(f)
+  const results: OpenOutcome[] = []
+  for (const f of paths) {
+    const r = await openPath(f)
+    if (r) results.push(r)
+  }
+  const notMd = results.filter((r) => r.notMarkdown)
+  const lenient = results.filter((r) => r.lenientDecoded)
+  if (notMd.length === 1) showToast(t('toast.notMarkdown', { name: notMd[0].name }))
+  else if (notMd.length > 1) showToast(t('toast.notMarkdownMulti', { n: String(notMd.length) }))
+  if (lenient.length === 1) showToast(t('toast.binaryOne', { name: lenient[0].name }))
+  else if (lenient.length > 1) showToast(t('toast.binaryMulti', { n: String(lenient.length) }))
 }
 
 export async function openViaDialog(): Promise<void> {

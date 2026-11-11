@@ -42,6 +42,7 @@ Built with [Tauri 2](https://v2.tauri.app). The design goal is *"light, fast, si
 - **Source mode** (CodeMirror 6, `Ctrl+/` toggles both ways, content stays in sync)
 - **Outline view** (heading tree on the left, hierarchical collapse/expand, click to jump; expanded by default, collapsible to a slim bar, `Ctrl+Shift+O`)
 - **Multiple tabs** (drag files in, `Ctrl+O`, `Ctrl+N`, middle-click / `Ctrl+W` to close, `Ctrl+Tab` to cycle, `Ctrl+1..9` to jump directly)
+- **Any text file**: drag in or open .log / .json / .csv — non-Markdown files show in source mode with a notice; binary files are decoded as plain text
 - **Status bar** (line/column, selected & total character count; Markdown/Source and Light/Dark toggles at bottom right)
 - **UI languages** (简体中文 / 繁體中文 / English / 日本語, switched in the menu, follows the system on first run)
 - **Link clicking**: external links open in the system browser, `#anchors` jump to headings, relative links open in-app (Markdown files as tabs, other files via the system default); works in source mode too
