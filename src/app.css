@@ -1205,3 +1205,11 @@ kbd {
   background: rgba(58, 63, 68, 0.96);
   border: 1px solid var(--border);
 }
+
+
+/* ========== 文档模式：光标所在块高亮 ========== */
+.vd-host .vditor-ir--active-block {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}

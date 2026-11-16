@@ -231,6 +231,43 @@ export function resetCmForReload(tab: Tab, content: string): void {
   })
 }
 
+/* ---------------- 文档模式：光标所在块高亮（对应源码模式的 activeLine） ---------------- */
+
+const IR_ACTIVE_BLOCK_CLS = 'vditor-ir--active-block'
+let irActiveBlock: HTMLElement | null = null
+let irBlockRaf = 0
+
+/** 更新光标所在块的高亮标记（块未变化时不动作） */
+function updateIrActiveBlock(tab: Tab): void {
+  const pre = tab.vdHost?.querySelector<HTMLElement>('.vditor-ir pre.vditor-reset')
+  if (!pre) return
+  const block = caretBlock(pre)
+  if (block === irActiveBlock) return
+  irActiveBlock?.classList.remove(IR_ACTIVE_BLOCK_CLS)
+  if (block) {
+    block.classList.add(IR_ACTIVE_BLOCK_CLS)
+    irActiveBlock = block
+  } else {
+    irActiveBlock = null
+  }
+}
+
+function clearIrActiveBlock(): void {
+  irActiveBlock?.classList.remove(IR_ACTIVE_BLOCK_CLS)
+  irActiveBlock = null
+}
+
+// 选区变化（光标移动/点击/输入）时跟随高亮；rAF 合并高频触发
+document.addEventListener('selectionchange', () => {
+  if (irBlockRaf) return
+  irBlockRaf = requestAnimationFrame(() => {
+    irBlockRaf = 0
+    const tab = activeTab()
+    if (tab && tab.mode === 'ir' && vditorReady(tab)) updateIrActiveBlock(tab)
+    else clearIrActiveBlock()
+  })
+})
+
 export function focusActiveEditor(): void {
   const tab = activeTab()
   if (!tab) return
