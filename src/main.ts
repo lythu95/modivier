@@ -242,6 +242,8 @@ function setupShortcuts(): void {
     (e) => {
       // 对话框打开期间屏蔽应用快捷键（对话框自己处理 Esc/Tab/Enter）
       if (isDialogOpen()) return
+      // 长按产生的 OS 自动重复不触发快捷键（防止按住 Ctrl+W 连续关标签）
+      if (e.repeat) return
       // Ctrl+F 在源码模式下放行给 CodeMirror 自带搜索（不拦截），IR 模式在下方分支处理
       if (!e.ctrlKey && !e.metaKey) {
         return
