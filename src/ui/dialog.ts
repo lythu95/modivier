@@ -61,16 +61,27 @@ export function showAppDialog(opts: {
         e.preventDefault()
         e.stopPropagation()
         finish(cancelValue)
-      } else if (e.key === 'Tab') {
-        // 焦点圈定在按钮组内
+      } else if (e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        // 焦点圈定在按钮组内：Tab/Shift+Tab 与 ←/→ 均可切换按钮
         e.preventDefault()
         e.stopPropagation()
         const btns = [...actions.querySelectorAll('button')]
-        if (btns.length > 0) {
-          const idx = btns.indexOf(document.activeElement as HTMLButtonElement)
-          const next = e.shiftKey ? (idx - 1 + btns.length) % btns.length : (idx + 1) % btns.length
-          btns[next].focus()
-        }
+        if (btns.length < 2) return
+        const idx = btns.indexOf(document.activeElement as HTMLButtonElement)
+        const dir = e.key === 'ArrowRight' ? 1 : e.shiftKey ? -1 : 1
+        const next = idx < 0 ? 0 : (idx + dir + btns.length) % btns.length
+        btns[next].focus()
+      } else if (e.key === 'Home' || e.key === 'End') {
+        e.preventDefault()
+        e.stopPropagation()
+        const btns = [...actions.querySelectorAll('button')]
+        if (btns.length > 0) btns[e.key === 'Home' ? 0 : btns.length - 1].focus()
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        // 显式触发聚焦按钮（不依赖浏览器默认行为模拟）
+        e.preventDefault()
+        e.stopPropagation()
+        const focused = document.activeElement
+        if (focused instanceof HTMLButtonElement && actions.contains(focused)) focused.click()
       }
     }
     window.addEventListener('keydown', onKey, true)
@@ -185,11 +196,44 @@ export function showChoiceDialog(opts: {
       resolve(value)
       focusActiveEditor()
     }
+
+    // 键盘导航状态：↑↓/Home/End 移动高亮，Enter 确认
+    const rows: HTMLElement[] = []
+    let kbIndex = Math.max(
+      0,
+      opts.options.findIndex((o) => o.selected),
+    )
+    const setActiveRow = (i: number) => {
+      kbIndex = Math.min(rows.length - 1, Math.max(0, i))
+      rows.forEach((r, j) => r.classList.toggle('kb-active', j === kbIndex))
+      rows[kbIndex]?.scrollIntoView({ block: 'nearest' })
+    }
+    const confirmRow = () => {
+      const opt = opts.options[kbIndex]
+      if (opt) finish(opt.value)
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
         finish(null)
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (rows.length === 0) return
+        setActiveRow(
+          e.key === 'ArrowDown'
+            ? (kbIndex + 1) % rows.length
+            : (kbIndex - 1 + rows.length) % rows.length,
+        )
+      } else if (e.key === 'Home' || e.key === 'End') {
+        e.preventDefault()
+        e.stopPropagation()
+        setActiveRow(e.key === 'Home' ? 0 : rows.length - 1)
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        confirmRow()
       }
     }
     window.addEventListener('keydown', onKey, true)
@@ -215,7 +259,9 @@ export function showChoiceDialog(opts: {
       row.appendChild(sample)
 
       row.addEventListener('click', () => finish(opt.value))
+      row.addEventListener('mouseenter', () => setActiveRow(rows.indexOf(row)))
       list.appendChild(row)
+      rows.push(row)
     }
     card.appendChild(list)
 
@@ -231,6 +277,6 @@ export function showChoiceDialog(opts: {
     overlay.appendChild(card)
     document.body.appendChild(overlay)
     openCount += 1
-    cancel.focus()
+    setActiveRow(kbIndex)
   })
 }

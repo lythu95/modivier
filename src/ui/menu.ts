@@ -25,27 +25,38 @@ export interface MenuItem {
 
 let openPopup: HTMLElement | null = null
 
+/** 键盘导航层级栈：每层记录弹出层元素、可导航项与当前高亮序号 */
+interface KbLevel {
+  pop: HTMLElement
+  nav: { item: MenuItem; el: HTMLElement }[]
+  index: number
+}
+let kbStack: KbLevel[] = []
+
 function closePopup(): void {
   openPopup?.remove()
   openPopup = null
+  kbStack = []
   window.removeEventListener('mousedown', onOutside, true)
-  window.removeEventListener('keydown', onEsc, true)
+  window.removeEventListener('keydown', onMenuKey, true)
 }
 
 function onOutside(e: Event): void {
   if (openPopup && !openPopup.contains(e.target as Node)) closePopup()
 }
 
-function onEsc(e: KeyboardEvent): void {
-  if (e.key === 'Escape') closePopup()
-}
-
-/** 关闭同级其他子菜单，保留 belongTo 项的 */
 function closeSubs(pop: HTMLElement, belongTo?: HTMLElement): void {
   pop.querySelectorAll<HTMLElement>(':scope > .menu-item > .menu-pop').forEach((el) => {
-    if (el.parentElement !== belongTo) el.remove()
+    if (el.parentElement !== belongTo) {
+      // 同步键盘层级栈（鼠标移入会收起键盘展开的子菜单）
+      const idx = kbStack.findIndex((l) => l.pop === el)
+      if (idx >= 0) kbStack.splice(idx)
+      el.remove()
+    }
   })
 }
+
+const itemOfEl = new WeakMap<HTMLElement, MenuItem>()
 
 function buildPop(items: MenuItem[]): HTMLElement {
   const pop = document.createElement('div')
@@ -62,6 +73,7 @@ function buildPop(items: MenuItem[]): HTMLElement {
     const btn = document.createElement('div')
     btn.className = 'menu-item' + (item.danger ? ' danger' : '') + (item.disabled ? ' disabled' : '')
     btn.setAttribute('role', 'menuitem')
+    itemOfEl.set(btn, item)
 
     const labelWrap = document.createElement('span')
     labelWrap.className = 'menu-label'
@@ -109,7 +121,126 @@ function buildPop(items: MenuItem[]): HTMLElement {
 
     pop.appendChild(btn)
   }
+  // 鼠标进入本层时清除键盘高亮（两套指示不并存）
+  kbClearOnHover(pop)
   return pop
+}
+
+/* ---------------- 菜单键盘导航 ---------------- */
+
+/** 收集弹出层内可键盘导航的项（跳过分隔线与禁用项） */
+function navItemsOf(pop: HTMLElement): { item: MenuItem; el: HTMLElement }[] {
+  return [...pop.querySelectorAll<HTMLElement>(':scope > .menu-item')]
+    .map((el) => ({ item: itemOfEl.get(el)!, el }))
+    .filter((n) => n.item && !n.item.disabled)
+}
+
+/** 设置某层的高亮项（清除本层其他项，滚动保持可见） */
+function kbHighlight(level: KbLevel, index: number): void {
+  level.index = index
+  level.nav.forEach((n, i) => n.el.classList.toggle('kb-active', i === index))
+  level.nav[index]?.el.scrollIntoView({ block: 'nearest' })
+}
+
+function kbClearHighlight(level: KbLevel): void {
+  level.nav.forEach((n) => n.el.classList.remove('kb-active'))
+}
+
+/** 展开当前高亮项的子菜单并进入（键盘 → 或 Enter） */
+function kbOpenSubmenu(): void {
+  const level = kbStack[kbStack.length - 1]
+  const nav = level.nav[level.index]
+  if (!nav?.item.children) return
+  closeSubs(level.pop, nav.el)
+  let sub = nav.el.querySelector<HTMLElement>(':scope > .menu-pop')
+  if (!sub) {
+    sub = buildPop(nav.item.children)
+    sub.classList.add('sub')
+    nav.el.appendChild(sub)
+  }
+  kbStack.push({ pop: sub, nav: navItemsOf(sub), index: -1 })
+  kbMove(1)
+}
+
+/** 收起当前层级（子层收起回到父层；顶层关闭整个菜单）。返回是否还有层级 */
+function kbPopLevel(): boolean {
+  if (kbStack.length > 1) {
+    const level = kbStack.pop()!
+    level.pop.remove()
+    // 子菜单内部的子层也要清
+    level.pop.querySelectorAll(':scope .menu-pop').forEach((p) => p.remove())
+    return true
+  }
+  closePopup()
+  return false
+}
+
+function kbMove(dir: 1 | -1): void {
+  const level = kbStack[kbStack.length - 1]
+  if (!level || level.nav.length === 0) return
+  kbHighlight(level, (level.index + dir + level.nav.length) % level.nav.length)
+}
+
+/** 菜单打开期间的统一键盘处理（方向键 / Enter / Space / Esc / Home / End） */
+function onMenuKey(e: KeyboardEvent): void {
+  const level = kbStack[kbStack.length - 1]
+  if (!level) return
+  const nav = level.nav[level.index]
+  const navItem = nav?.item
+
+  switch (e.key) {
+    case 'ArrowDown':
+    case 'ArrowUp': {
+      e.preventDefault()
+      e.stopPropagation()
+      kbMove(e.key === 'ArrowDown' ? 1 : -1)
+      break
+    }
+    case 'ArrowRight': {
+      e.preventDefault()
+      e.stopPropagation()
+      if (navItem?.children) kbOpenSubmenu()
+      break
+    }
+    case 'ArrowLeft': {
+      e.preventDefault()
+      e.stopPropagation()
+      if (kbStack.length > 1) kbPopLevel()
+      break
+    }
+    case 'Enter':
+    case ' ': {
+      e.preventDefault()
+      e.stopPropagation()
+      if (navItem?.children) kbOpenSubmenu()
+      else if (navItem && !navItem.disabled) {
+        closePopup()
+        void navItem.action?.()
+      }
+      break
+    }
+    case 'Escape': {
+      e.preventDefault()
+      e.stopPropagation()
+      kbPopLevel()
+      break
+    }
+    case 'Home':
+    case 'End': {
+      e.preventDefault()
+      e.stopPropagation()
+      kbHighlight(level, e.key === 'Home' ? 0 : level.nav.length - 1)
+      break
+    }
+  }
+}
+
+/** 鼠标移入时清除该层键盘高亮（避免两种指示并存） */
+function kbClearOnHover(pop: HTMLElement): void {
+  pop.addEventListener('mouseenter', () => {
+    const level = kbStack[kbStack.length - 1]
+    if (level && level.pop === pop) kbClearHighlight(level)
+  }, true)
 }
 
 export function showMenu(
@@ -128,8 +259,9 @@ export function showMenu(
   pop.style.left = `${Math.max(8, left)}px`
   pop.style.top = `${Math.max(8, top)}px`
   openPopup = pop
+  kbStack = [{ pop, nav: navItemsOf(pop), index: -1 }]
   window.addEventListener('mousedown', onOutside, true)
-  window.addEventListener('keydown', onEsc, true)
+  window.addEventListener('keydown', onMenuKey, true)
 }
 
 /** 左上角主菜单：文件 → 关闭 → 视图 → 偏好设置 → 关于 */

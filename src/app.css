@@ -756,7 +756,8 @@ kbd {
   cursor: default;
 }
 
-.menu-item:hover:not(.disabled) {
+.menu-item:hover:not(.disabled),
+.menu-item.kb-active:not(.disabled) {
   background: var(--menu-hover);
 }
 
@@ -1120,7 +1121,8 @@ kbd {
   cursor: default;
 }
 
-.choice-row:hover {
+.choice-row:hover,
+.choice-row.kb-active {
   background: var(--menu-hover);
 }
 
