@@ -276,11 +276,12 @@ button {
 .tab-editor {
   position: absolute;
   inset: 0;
-  display: none;
+  /* visibility 而非 display：隐藏时保留布局，滚动位置不丢失（切换标签回到原位） */
+  visibility: hidden;
 }
 
 .tab-editor.active {
-  display: block;
+  visibility: visible;
   animation: fade-in 0.18s ease-out;
 }
 

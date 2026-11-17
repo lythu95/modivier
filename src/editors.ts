@@ -209,8 +209,40 @@ export function activateEditor(tab: Tab): void {
     // 在源码模式修改过内容，回 Markdown 模式时同步给 Vditor（清空撤销栈避免跨模式混乱）
     tab.vditor!.setValue(tab.content, true)
   }
+  // vditor.focus()/cm.focus() 会把视口滚动到光标处——标签切换时应保持用户所在位置，
+  // 因此记录当前滚动并在焦点完成后恢复（首次激活除外，由 pendingRestore 负责定位）
+  const resumeScroll = vditorReady(tab) || !!tab.cm
+  const savedTop = resumeScroll
+    ? wantSource
+      ? (tab.cm?.scrollDOM.scrollTop ?? null)
+      : (() => {
+          const pre = tab.vdHost?.querySelector('.vditor-ir pre.vditor-reset') as HTMLElement | null
+          let el: HTMLElement | null = pre
+          while (el && el !== tab.vdHost) {
+            if (el.scrollHeight > el.clientHeight + 1) break
+            el = el.parentElement
+          }
+          return (el ?? pre)?.scrollTop ?? null
+        })()
+    : null
   focusActiveEditor()
   emitCursor()
+  if (savedTop != null && !tab.pendingRestore) {
+    requestAnimationFrame(() => {
+      if (wantSource && tab.cm) {
+        tab.cm.scrollDOM.scrollTop = savedTop
+      } else {
+        const pre = tab.vdHost?.querySelector('.vditor-ir pre.vditor-reset') as HTMLElement | null
+        let el: HTMLElement | null = pre
+        while (el && el !== tab.vdHost) {
+          if (el.scrollHeight > el.clientHeight + 1) break
+          el = el.parentElement
+        }
+        const sc = (el ?? pre) as HTMLElement | null
+        if (sc) sc.scrollTop = savedTop
+      }
+    })
+  }
 }
 
 /** 外部修改重载：用磁盘内容整体替换源码模式文档（保留实例与撤销栈重置语义） */
