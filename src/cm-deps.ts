@@ -78,6 +78,25 @@ export function buildCmExtensions(dark: boolean) {
     highlightSelectionMatches(),
     EditorView.domEventHandlers({
       mousedown: (e, view) => cmLinkClick(e, view),
+      mousemove: (e, view) => {
+        // 链接语法区间上显示手型，提示可点击
+        const pos = view.posAtCoords({ x: e.clientX, y: e.clientY })
+        if (pos == null) return false
+        const line = view.state.doc.lineAt(pos)
+        const re = new RegExp('[\\[([^\\[]*)\\]\\(([^)\\s]+)(?:\\s+"[^"]*")?\\)|<([^<>\\s]+)>', 'g')
+        let hit = false
+        for (const m of line.text.matchAll(re)) {
+          const start = line.from + (m.index ?? 0)
+          if (pos >= start && pos <= start + m[0].length) { hit = true; break }
+        }
+        const el = view.dom as HTMLElement
+        const prev = el.dataset.linkHover === '1'
+        if (hit !== prev) {
+          el.dataset.linkHover = hit ? '1' : ''
+          el.style.cursor = hit ? 'pointer' : ''
+        }
+        return false
+      },
     }),
     cmThemeComp.of(dark ? oneDark : cmLightTheme),
   ]

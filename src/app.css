@@ -104,6 +104,8 @@ button {
   display: flex;
   align-items: flex-end;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
   flex: 0 1 auto;
@@ -528,6 +530,11 @@ button {
 
 .vd-host .vditor-reset img {
   max-width: 100%;
+}
+
+/* 段落间距紧凑化：Enter 软换行后接一行（默认 vditor 段间距 16px 过大） */
+.vd-host .vditor-reset p {
+  margin: 0.35em 0;
 }
 
 /* ========== CodeMirror（源码模式） ========== */
@@ -1215,4 +1222,38 @@ kbd {
   background: color-mix(in srgb, var(--fg) 4%, transparent);
   border-radius: 4px;
   transition: background 0.15s ease;
+}
+
+
+/* ========== 标签栏溢出箭头与拖拽 ========== */
+.tab-scroll-arrow {
+  flex: none;
+  width: 18px;
+  height: 100%;
+  display: none;
+  place-items: center;
+  color: var(--fg-muted);
+  background: transparent;
+}
+
+.tab-scroll-arrow:hover {
+  background: var(--tab-hover-bg);
+  color: var(--fg);
+}
+
+.tab-scroll-arrow.dim {
+  opacity: 0.3;
+}
+
+/* 仅在溢出时显示（#tabs.overflowing 的兄弟箭头） */
+#tabs.overflowing ~ .tab-scroll-arrow.right,
+.tab-scroll-arrow.left:has(+ #tabs.overflowing),
+#titlebar:has(#tabs.overflowing) .tab-scroll-arrow {
+  display: grid;
+}
+
+.tab.dragging {
+  opacity: 0.75;
+  z-index: 10;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }

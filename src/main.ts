@@ -170,6 +170,8 @@ async function main(): Promise<void> {
   setupShortcuts()
   setupLinkHandling(app)
   setupCodeCopy(app)
+  setupSoftEnter(app)
+  setupPasteLink(app)
 
   // 外部修改检测：窗口聚焦 / 标签切换 / 定时轮询（3s）核对激活标签的磁盘 mtime
   const onExternalCheck = () => {
@@ -276,13 +278,6 @@ function setupShortcuts(): void {
           e.preventDefault()
           toggleSearchBar()
         }
-      } else if (key === 'f') {
-        // Ctrl+F：所见即所得模式用查找条；源码模式放行给 CodeMirror 自带搜索
-        const tab = activeTab()
-        if (tab && tab.mode === 'ir') {
-          e.preventDefault()
-          toggleSearchBar()
-        }
       } else if (key === 'w') {
         e.preventDefault()
         void closeActiveTab()
@@ -343,61 +338,53 @@ function dispatchLinkHref(href: string): boolean {
 
 /** 链接/任务列表/代码块复制的编辑器内点击委托 */
 function setupLinkHandling(root: HTMLElement): void {
-  // 任务项 checkbox：mousedown 捕获阶段记录原始状态（此时任何激活翻转都未发生）
-  let taskClick: { input: HTMLInputElement; before: boolean } | null = null
+  // 链接点击在 mousedown 捕获阶段接管：抢在 vditor 的链接编辑气泡/默认行为之前
   root.addEventListener(
     'mousedown',
     (e) => {
-      const cb = (e.target as HTMLElement).closest?.<HTMLInputElement>('input[type=checkbox]')
-      taskClick = cb && cb.closest('li.vditor-task') ? { input: cb, before: cb.checked } : null
+      if (e.button !== 0) return
+      const target = e.target as HTMLElement
+      const irLink = target.closest?.<HTMLElement>('span[data-type="a"]')
+      if (irLink) {
+        const urlEl = irLink.querySelector<HTMLElement>('.vditor-ir__marker--link')
+        const url = (urlEl?.textContent ?? '').replace(/^[<(]|[)>]$/g, '').trim()
+        if (url && dispatchLinkHref(url)) {
+          e.preventDefault()
+          e.stopPropagation()
+        }
+        return
+      }
+      const anchor = target.closest?.<HTMLAnchorElement>('a[href]')
+      if (anchor) {
+        const href = anchor.getAttribute('href') ?? ''
+        if (href && dispatchLinkHref(href)) {
+          e.preventDefault()
+          e.stopPropagation()
+        }
+      }
     },
     true,
   )
 
   root.addEventListener('click', (e) => {
     const target = e.target as HTMLElement
+
     // 任务列表：点击 checkbox 翻转勾选并回写源码态。
-    // 合成/真实点击的激活行为时序不一致（pre-click 可能在 dispatch 前就翻转），
-    // 因此以 mousedown 记录的原始状态为基准，preventDefault 后在 setTimeout 中
-    // 强制归位到相反状态（最后一步，确定性收敛），再经 DOM2Md 反推回写源码
+    // preventDefault 阻止原生激活（避免与手动翻转叠加成双重翻转），完全手动控制；
+    // 翻转 property+attribute 后经 DOM2Md 反推回写源码（IR 的源码即 DOM）
     const checkbox = target.closest<HTMLInputElement>('input[type=checkbox]')
     if (checkbox && checkbox.closest('li.vditor-task')) {
       e.preventDefault()
-      const before = taskClick?.input === checkbox ? taskClick.before : !checkbox.checked
-      window.setTimeout(() => {
-        const want = !before
-        if (checkbox.checked !== want) checkbox.checked = want
-        // innerHTML 序列化读 attribute，property 与 attribute 同步才能被 DOM2Md 反推
-        if (want) checkbox.setAttribute('checked', '')
-        else checkbox.removeAttribute('checked')
-        const tab = activeTab()
-        if (tab?.vditor) {
-          tab.content = tab.vditor.getValue()
-          notify()
-        }
-      }, 0)
-      return
-    }
-
-    // IR 所见即所得：链接以 span[data-type=a] 呈现（非真 <a>），URL 在 marker--link 文本里
-    const irLink = target.closest<HTMLElement>('span[data-type="a"]')
-    if (irLink) {
-      const urlEl = irLink.querySelector<HTMLElement>('.vditor-ir__marker--link')
-      const url = (urlEl?.textContent ?? '').replace(/^[<(]|[)>]$/g, '').trim()
-      if (url && dispatchLinkHref(url)) {
-        e.preventDefault()
-        e.stopPropagation()
+      const nowChecked = !checkbox.checked
+      checkbox.checked = nowChecked
+      if (nowChecked) checkbox.setAttribute('checked', '')
+      else checkbox.removeAttribute('checked')
+      const tab = activeTab()
+      if (tab?.vditor) {
+        tab.content = tab.vditor.getValue()
+        notify()
       }
       return
-    }
-
-    const anchor = target.closest<HTMLAnchorElement>('a[href]')
-    if (!anchor) return
-    const href = anchor.getAttribute('href') ?? ''
-    if (!href) return
-    if (dispatchLinkHref(href)) {
-      e.preventDefault()
-      e.stopPropagation()
     }
   })
 }
@@ -453,6 +440,64 @@ function jumpToAnchor(anchor: HTMLAnchorElement | null, href: string): void {
   }
   target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   void anchor
+}
+
+/** 文档模式 Enter = 软换行（同段紧凑换行）；Shift+Enter / 列表 / 代码块内保持原行为 */
+function setupSoftEnter(root: HTMLElement): void {
+  root.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return
+      if (isDialogOpen()) return
+      const tab = activeTab()
+      if (!tab || tab.mode !== 'ir') return
+      const target = e.target as HTMLElement
+      const pre = target.closest?.('.vditor-ir pre.vditor-reset')
+      if (!pre) return
+      // 代码块（编辑态标记行）与列表内保持原生行为：代码块内换行、列表续行
+      if (target.closest('.vditor-ir__marker--pre')) return
+      if (target.closest('li')) return
+      // 普通段落：阻止 vditor 拆段，插入软换行（反斜杠 n 文本，pre-wrap 显示为换行，
+      // DOM2Md 反推仍为单换行，保存内容不变）
+      e.preventDefault()
+      e.stopPropagation()
+      document.execCommand('insertText', false, String.fromCharCode(10))
+    },
+    true,
+  )
+}
+
+/** 粘贴带链接的富文本时转成标准 Markdown 链接：[text](url) */
+function setupPasteLink(root: HTMLElement): void {
+  root.addEventListener(
+    'paste',
+    (e) => {
+      const target = e.target as HTMLElement
+      if (!target.closest?.('.vd-host, .cm-host')) return
+      const dt = (e as ClipboardEvent).clipboardData
+      if (!dt) return
+      const html = dt.getData('text/html')
+      if (!html) return
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      // 提取 html 中所有链接，重写为 markdown 链接文本
+      const links = [...doc.querySelectorAll('a[href]')]
+      if (links.length === 0) return
+      const BT = String.fromCharCode(96)
+      links.forEach((a) => {
+        const text = (a.textContent || a.getAttribute('href') || '').trim()
+        const url = a.getAttribute('href') || ''
+        a.replaceWith(document.createTextNode(BT + text + '](' + url + ')' + BT))
+      })
+      // 只含链接（或以链接为主）时才接管；普通富文本仍走默认粘贴
+      const plain = doc.body.textContent || ''
+      const md = plain.split(String.fromCharCode(10, 10, 10)).join(String.fromCharCode(10, 10)).trim()
+      if (!md) return
+      e.preventDefault()
+      e.stopPropagation()
+      document.execCommand('insertText', false, md)
+    },
+    true,
+  )
 }
 
 /** 代码块 hover 复制按钮：悬浮层挂在 body，不污染编辑器 DOM（IR 的源码由 DOM 反推） */
