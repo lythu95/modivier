@@ -467,7 +467,11 @@ function setupSoftEnter(root: HTMLElement): void {
   )
 }
 
-/** 粘贴带链接的富文本时转成标准 Markdown 链接：[text](url) */
+/**
+ * 粘贴「纯链接」时转为标准 Markdown 链接：[text](url)。
+ * 仅当剪贴板 HTML 的实质内容就是一个链接（无其他正文）时接管；
+ * 一般富文本粘贴放行给 vditor 内建 HTML→Markdown 转换（保留标题/列表/加粗等格式）。
+ */
 function setupPasteLink(root: HTMLElement): void {
   root.addEventListener(
     'paste',
@@ -479,22 +483,18 @@ function setupPasteLink(root: HTMLElement): void {
       const html = dt.getData('text/html')
       if (!html) return
       const doc = new DOMParser().parseFromString(html, 'text/html')
-      // 提取 html 中所有链接，重写为 markdown 链接文本
-      const links = [...doc.querySelectorAll('a[href]')]
-      if (links.length === 0) return
-      const BT = String.fromCharCode(96)
-      links.forEach((a) => {
-        const text = (a.textContent || a.getAttribute('href') || '').trim()
-        const url = a.getAttribute('href') || ''
-        a.replaceWith(document.createTextNode(BT + text + '](' + url + ')' + BT))
-      })
-      // 只含链接（或以链接为主）时才接管；普通富文本仍走默认粘贴
-      const plain = doc.body.textContent || ''
-      const md = plain.split(String.fromCharCode(10, 10, 10)).join(String.fromCharCode(10, 10)).trim()
-      if (!md) return
+      const anchors = [...doc.body.querySelectorAll('a[href]')]
+      if (anchors.length !== 1) return
+      const a = anchors[0]
+      const url = (a.getAttribute('href') || '').trim()
+      if (!url || !/^https?:/i.test(url)) return
+      // 判定「纯链接」：去掉唯一 <a> 后正文无实质文本
+      const rest = (doc.body.textContent || '').split(a.textContent || String.fromCharCode(0xfffd)).join('').trim()
+      if (rest.length > 0) return
+      const text = (a.textContent || url).trim() || url
       e.preventDefault()
       e.stopPropagation()
-      document.execCommand('insertText', false, md)
+      document.execCommand('insertText', false, `[${text}](${url})`)
     },
     true,
   )
